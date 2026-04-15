@@ -270,6 +270,11 @@ class EventHandler:
         self.window.stt_model = model  # 保持向后兼容
         self.window.display.append("<b>[System]:</b> Whisper Model Ready! GPU Accelerated.")
 
+    def cleanup(self) -> None:
+        """清理事件处理器资源。"""
+        # 目前没有特定资源需要释放，但是保留接口以便未来扩展
+        return
+
 
 def create_event_handler(main_window):
     """

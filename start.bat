@@ -20,11 +20,11 @@ if not exist ".\venv_ai\Scripts\activate" (
 )
 
 echo [2/3] Checking CUDA and Dependencies...
-echo [3/3] Launching ReadEcho_Pro.py...
+echo [3/3] Launching main.py...
 echo ------------------------------------------
 
 :: 3. 启动程序，使用虚拟环境的 Python
-.\venv_ai\Scripts\python.exe ReadEcho_Pro.py
+.\venv_ai\Scripts\python.exe main.py
 
 :: 4. 只有当程序“非正常崩溃”时才保留窗口，正常关闭则随之消失
 if %errorlevel% neq 0 (

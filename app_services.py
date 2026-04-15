@@ -3,10 +3,10 @@ ReadEcho Pro 应用服务模块
 整合所有业务逻辑服务，提供统一的接口
 """
 
+from config import SAMPLE_RATE, TEMP_AUDIO_FILE, LOGGER
 from database_manager import DBManager
 from ai_processor import AIService
 from recording_manager import RecordingService
-from config import SAMPLE_RATE, TEMP_AUDIO_FILE
 
 
 class AppServices:
@@ -14,46 +14,104 @@ class AppServices:
 
     def __init__(self):
         """初始化所有服务"""
-        self.db = DBManager()
-        self.ai_service = AIService()
-        self.recording_service = RecordingService()
-        self.current_book_id = None
-        self.current_book_title = ""
-        self.dark_mode = True
-        self.stt_model = None  # Whisper模型，由AI服务管理
+        try:
+            self.db = DBManager()
+            self.ai_service = AIService()
+            self.recording_service = RecordingService()
+            self.current_book_id = None
+            self.current_book_title = ""
+            self.dark_mode = True
+            self.stt_model = None  # Whisper模型，由AI服务管理
+            LOGGER.info("应用服务初始化成功")
+        except Exception as e:
+            LOGGER.error(f"应用服务初始化失败: {e}", exc_info=True)
+            raise
 
     # --- 数据库服务封装 ---
 
-    def add_book(self, title, author=""):
-        """添加新书籍"""
-        book_id = self.db.add_book(title, author)
-        self.current_book_id = book_id
-        self.current_book_title = title
-        return book_id
+    def add_book(self, title: str, author: str = "") -> int:
+        """
+        添加新书籍
+        
+        Args:
+            title: 书籍标题
+            author: 作者名称
+            
+        Returns:
+            新书籍的ID
+        """
+        try:
+            book_id = self.db.add_book(title, author)
+            self.current_book_id = book_id
+            self.current_book_title = title
+            return book_id
+        except Exception as e:
+            LOGGER.error(f"添加书籍失败: {e}")
+            raise
 
-    def get_books(self, search_query=""):
+    def get_books(self, search_query: str = "", limit: int = 50, offset: int = 0):
         """获取书籍列表"""
-        return self.db.get_books(search_query)
+        try:
+            return self.db.get_books(search_query, limit, offset)
+        except Exception as e:
+            LOGGER.error(f"获取书籍列表失败: {e}")
+            return []
 
-    def get_book_by_title(self, title):
+    def get_books_count(self, search_query: str = "") -> int:
+        """获取书籍总数"""
+        try:
+            return self.db.get_books_count(search_query)
+        except Exception as e:
+            LOGGER.error(f"获取书籍计数失败: {e}")
+            return 0
+
+    def get_book_by_title(self, title: str):
         """根据书名获取书籍ID"""
-        return self.db.get_book_by_title(title)
+        try:
+            return self.db.get_book_by_title(title)
+        except Exception as e:
+            LOGGER.error(f"查询书籍失败: {e}")
+            return None
 
-    def add_note(self, title, content, note_type="Summary"):
+    def add_note(self, title: str, content: str, note_type: str = "Summary"):
         """添加笔记"""
-        self.db.add_note(title, content, note_type)
+        try:
+            self.db.add_note(title, content, note_type)
+        except Exception as e:
+            LOGGER.error(f"添加笔记失败: {e}")
+            raise
 
-    def add_recording(self, book_id, file_path, transcribed_text):
+    def add_recording(self, book_id: int, file_path: str, transcribed_text: str):
         """添加录音记录"""
-        self.db.add_recording(book_id, file_path, transcribed_text)
+        try:
+            self.db.add_recording(book_id, file_path, transcribed_text)
+        except Exception as e:
+            LOGGER.error(f"添加录音记录失败: {e}")
+            raise
 
-    def get_recordings_by_book(self, book_id):
+    def get_recordings_by_book(self, book_id: int):
         """获取指定书籍的录音记录"""
-        return self.db.get_recordings_by_book(book_id)
+        try:
+            return self.db.get_recordings_by_book(book_id)
+        except Exception as e:
+            LOGGER.error(f"获取录音记录失败: {e}")
+            return []
 
-    def add_qa(self, book_id, question, answer):
+    def add_qa(self, book_id: int, question: str, answer: str):
         """添加问答记录"""
-        self.db.add_qa(book_id, question, answer)
+        try:
+            self.db.add_qa(book_id, question, answer)
+        except Exception as e:
+            LOGGER.error(f"添加问答记录失败: {e}")
+            raise
+
+    def get_qa_by_book(self, book_id: int, limit: int = 50, offset: int = 0):
+        """获取问答记录"""
+        try:
+            return self.db.get_qa_by_book(book_id, limit, offset)
+        except Exception as e:
+            LOGGER.error(f"获取问答记录失败: {e}")
+            return []
 
     # --- AI服务封装 ---
 
@@ -145,14 +203,25 @@ class AppServices:
         """获取临时音频文件路径"""
         return TEMP_AUDIO_FILE
 
-    def close(self):
-        """关闭所有服务"""
-        # 关闭数据库连接
-        if hasattr(self.db, 'close'):
-            self.db.close()
+    def close(self) -> None:
+        """关闭所有服务，释放资源"""
+        try:
+            LOGGER.info("应用服务关闭中...")
+            
+            # 关闭数据库连接
+            if hasattr(self.db, 'close'):
+                self.db.close()
 
-        # 清理录音资源
-        self.cleanup_recording()
+            # 清理录音资源
+            self.cleanup_recording()
+            
+            LOGGER.info("应用服务已安全关闭")
+        except Exception as e:
+            LOGGER.error(f"关闭应用服务时出错: {e}")
+
+    def cleanup(self) -> None:
+        """清理资源（close的别名，用于向上兼容）"""
+        self.close()
 
     def __del__(self):
         """析构函数，确保资源被释放"""

@@ -4,6 +4,44 @@ ReadEcho Pro 配置文件
 """
 
 import os
+import logging
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+# --- 日志系统配置 ---
+def setup_logging():
+    """配置应用程序日志系统"""
+    log_dir = Path.home() / '.readecho' / 'logs'
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    logger = logging.getLogger('readecho')
+    logger.setLevel(logging.DEBUG)
+    
+    # 控制台处理器
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
+    # 文件处理器（轮转日志）
+    file_handler = RotatingFileHandler(
+        log_dir / 'readecho.log',
+        maxBytes=5*1024*1024,  # 5MB
+        backupCount=5
+    )
+    file_handler.setLevel(logging.DEBUG)
+    
+    # 日志格式
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    console_handler.setFormatter(formatter)
+    file_handler.setFormatter(formatter)
+    
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+    return logger
+
+LOGGER = setup_logging()
 
 # --- FFMPEG 配置 ---
 # 替换为你电脑上 ffmpeg.exe 所在的文件夹路径
