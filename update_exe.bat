@@ -16,9 +16,9 @@ if not exist "venv_ai\Scripts\activate.bat" (
 )
 
 :: 检查主程序文件是否存在
-if not exist "ReadEcho_Pro.py" (
-    echo ERROR: ReadEcho_Pro.py not found!
-    echo Please make sure ReadEcho_Pro.py exists in the current directory.
+if not exist "main.py" (
+    echo ERROR: main.py not found!
+    echo Please make sure main.py exists in the current directory.
     pause
     exit /b 1
 )
@@ -48,7 +48,7 @@ if errorlevel 1 (
 
 echo.
 echo [3/4] Building new EXE with PyInstaller...
-venv_ai\Scripts\pyinstaller --onedir --windowed ReadEcho_Pro.py
+venv_ai\Scripts\pyinstaller --onedir --windowed main.py --name ReadEcho_Pro --hidden-import database_manager --hidden-import ai_processor --hidden-import recording_manager --hidden-import app_services --hidden-import ui_builder --hidden-import event_handler --hidden-import config --hidden-import utils
 if errorlevel 1 (
     echo ERROR: PyInstaller failed!
     pause

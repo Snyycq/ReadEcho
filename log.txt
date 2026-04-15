@@ -15,3 +15,17 @@
 - 数据库扩展：新增books、recordings、qa表支持新功能
 - 窗口大小调整：900×700，控件布局更合理
 
+20260415：
+- 代码架构重构：将主程序ReadEcho_Pro.py拆分为模块化架构
+  - main.py：主入口，精简的窗口类
+  - config.py：配置参数和样式表
+  - database_manager.py：数据库CRUD操作
+  - ai_processor.py：Whisper转录、Ollama问答
+  - recording_manager.py：音频录制与保存
+  - app_services.py：服务整合层
+  - ui_builder.py：界面组件构建
+  - event_handler.py：用户交互事件处理
+  - utils.py：工具函数
+- 修复ui_builder.py中的信号连接问题和Qt布局问题
+- 入口文件从ReadEcho_Pro.py切换到main.py
+

@@ -2,11 +2,11 @@
 
 
 a = Analysis(
-    ['ReadEcho_Pro.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=['database_manager', 'ai_processor', 'recording_manager', 'app_services', 'ui_builder', 'event_handler', 'config', 'utils'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
