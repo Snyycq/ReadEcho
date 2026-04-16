@@ -1,0 +1,18 @@
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+.pytest_cache
+
+# Test databases
+*.db
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+
+# Temporary test files
+test_*.tmp
+*.tmp
