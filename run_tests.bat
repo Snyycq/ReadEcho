@@ -11,6 +11,10 @@ echo.
 if not exist "venv_ai\Scripts\python.exe" (
     echo 错误: 虚拟环境不存在！
     echo 请先运行: python -m venv venv_ai
+    echo 然后激活并安装依赖:
+    echo   venv_ai\Scripts\activate
+    echo   pip install -e .
+    echo   pip install pytest pytest-cov
     echo.
     pause
     exit /b 1
