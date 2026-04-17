@@ -38,9 +38,11 @@ main.py
   - 提供 `closeEvent` 优雅关闭机制
 
 - `config.py`
-  - 配置常量
-  - 日志系统初始化
-  - 样式表和主题配置
+  - 配置常量与路径设置
+  - 日志系统初始化与管理
+  - 深色/浅色主题样式表定义
+  - CSS样式类（如 `.danger` 按钮）配置
+  - Terminal组件固定样式
 
 - `app_services.py`
   - 服务协调层，封装数据库、AI、录音等功能
@@ -62,12 +64,16 @@ main.py
   - 与书籍记录关联
 
 - `ui_builder.py`
-  - PyQt6 界面构建
-  - 控件布局与按钮配置
+  - PyQt6 界面构建与布局管理
+  - Terminal组件（固定黑底白字终端样式）
+  - 控件样式与主题适配配置
+  - 危险按钮样式类管理
 
 - `event_handler.py`
-  - UI 事件响应
-  - 按钮、输入框、列表等交互逻辑
+  - UI 事件响应与信号处理
+  - 按钮状态管理（如录音按钮样式切换）
+  - Terminal输出内容格式化与主题适配
+  - 危险按钮样式类动态管理
 
 - `utils.py`
   - 常用工具函数
@@ -93,13 +99,13 @@ main.py
 | 文件 | 功能 | 说明 |
 |------|------|------|
 | `main.py` | 应用入口 | 初始化 UI、服务和事件处理 |
-| `config.py` | 配置与日志 | 统一日志、样式和常量 |
+| `config.py` | 配置与主题 | 日志系统、深色/浅色主题样式、CSS样式类定义 |
 | `app_services.py` | 服务层 | 统一调用数据库、AI、录音接口 |
 | `database_manager.py` | 数据持久化 | SQLite 操作、查询优化 |
 | `ai_processor.py` | AI 逻辑 | 语音转写与智能问答 |
 | `recording_manager.py` | 录音管理 | 麦克风录音、文件保存 |
-| `ui_builder.py` | 界面构建 | PyQt6 组件布局和样式 |
-| `event_handler.py` | 事件响应 | UI 交互逻辑处理 |
+| `ui_builder.py` | 界面构建 | PyQt6 组件布局、Terminal终端组件、主题样式适配 |
+| `event_handler.py` | 事件响应 | UI 交互逻辑、按钮状态管理、Terminal输出格式化 |
 | `validators.py` | 输入验证 | 防注入、防路径攻击 |
 | `model_cache.py` | 模型缓存 | Whisper 模型加载缓存 |
 | `__init__.py` | 包入口 | 统一导出常用类和变量 |

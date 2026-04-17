@@ -152,12 +152,38 @@ class AIProcessThread(QThread):
             transcribed_text = result['text'].strip()
             if not transcribed_text:
                 LOGGER.warning("转录结果为空文本")
-            
-            LOGGER.info(f"转录成功，文本长度: {len(transcribed_text)}")
-            self.result_ready.emit("VoiceNote", transcribed_text)
+
+            corrected_text = self._correct_transcription(transcribed_text)
+            LOGGER.info(f"转录成功，文本长度: {len(corrected_text)}")
+            self.result_ready.emit("VoiceNote", corrected_text)
         except Exception as e:
             LOGGER.error(f"音频转录失败: {e}")
             raise
+
+    def _correct_transcription(self, text: str) -> str:
+        """使用AI模型自动纠正中文转录文本中的错别字"""
+        try:
+            if not text or not isinstance(text, str):
+                return text
+
+            prompt = (
+                "请纠正下面的中文转录文本中的错别字和明显的语义错误，"
+                "保持原文意思不变，只输出纠正后的文本，不要添加额外说明：\n\n"
+                f"{text}"
+            )
+            resp = ollama.chat(
+                model=OLLAMA_MODEL,
+                messages=[{'role': 'user', 'content': prompt}],
+                stream=False
+            )
+            if resp and 'message' in resp:
+                corrected = resp['message'].get('content', '').strip()
+                if corrected:
+                    return corrected
+            return text
+        except Exception as e:
+            LOGGER.warning(f"纠正转录文本失败，保留原文: {e}")
+            return text
 
     def _answer_question(self):
         """回答关于书籍的问题"""

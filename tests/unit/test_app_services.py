@@ -6,7 +6,6 @@ app_services.py 单元测试
 import pytest
 import sys
 import os
-import tempfile
 
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -18,24 +17,11 @@ class TestAppServices:
     """测试应用服务"""
 
     @pytest.fixture
-    def services(self):
+    def services(self, temp_db_path):
         """创建测试服务实例"""
-        # 临时修改数据库路径
-        import config
-        original_db = config.DATABASE_FILE
-
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
-            db_path = f.name
-        config.DATABASE_FILE = db_path
-
-        services = AppServices()
+        services = AppServices(db_path=temp_db_path)
         yield services
-
-        # 清理
         services.close()
-        config.DATABASE_FILE = original_db
-        if os.path.exists(db_path):
-            os.unlink(db_path)
 
     class TestInitialization:
         """测试服务初始化"""
@@ -86,6 +72,12 @@ class TestAppServices:
             book_id = services.get_book_by_title("不存在的书")
             assert book_id is None
 
+        def test_delete_book(self, services):
+            """测试删除书籍"""
+            book_id = services.add_book("测试书籍")
+            services.delete_book(book_id)
+            assert services.get_book_by_title("测试书籍") is None
+
     class TestCurrentBook:
         """测试当前书籍管理"""
 
@@ -112,10 +104,10 @@ class TestAppServices:
     class TestRecording:
         """测试录音功能"""
 
-        def test_add_recording(self, services):
+        def test_add_recording(self, services, temp_audio_file):
             """测试添加录音"""
             book_id = services.add_book("测试书籍")
-            services.add_recording(book_id, "/path/audio.wav", "转录文本")
+            services.add_recording(book_id, temp_audio_file, "转录文本")
 
             recordings = services.get_recordings_by_book(book_id)
             assert len(recordings) == 1
@@ -125,6 +117,25 @@ class TestAppServices:
             book_id = services.add_book("测试书籍")
             recordings = services.get_recordings_by_book(book_id)
             assert recordings == []
+
+        def test_edit_recording_text(self, services, temp_audio_file):
+            """测试更新录音文本"""
+            book_id = services.add_book("测试书籍")
+            services.add_recording(book_id, temp_audio_file, "旧文本")
+            recordings = services.get_recordings_by_book(book_id)
+            rec_id = recordings[0][0]
+            services.update_recording_text(rec_id, "新文本")
+
+            updated = services.get_recording_by_id(rec_id)
+            assert updated[3] == "新文本"
+
+        def test_delete_recording(self, services, temp_audio_file):
+            """测试删除录音"""
+            book_id = services.add_book("测试书籍")
+            services.add_recording(book_id, temp_audio_file, "删除文本")
+            rec_id = services.get_recordings_by_book(book_id)[0][0]
+            services.delete_recording(rec_id)
+            assert services.get_recordings_by_book(book_id) == []
 
     class TestQA:
         """测试问答功能"""

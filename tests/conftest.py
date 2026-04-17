@@ -56,6 +56,14 @@ def sample_recording_data():
 
 
 @pytest.fixture
+def temp_audio_file(tmp_path):
+    """提供一个真实存在的音频文件路径"""
+    audio_file = tmp_path / "test_recording.wav"
+    audio_file.write_bytes(b"RIFF$$$$WAVEfmt ")
+    return str(audio_file)
+
+
+@pytest.fixture
 def sample_qa_data():
     """提供示例问答数据"""
     return {

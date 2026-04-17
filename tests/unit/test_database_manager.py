@@ -19,25 +19,11 @@ class TestDBManager:
     """测试数据库管理器"""
 
     @pytest.fixture
-    def db(self):
+    def db(self, temp_db_path):
         """创建测试数据库实例"""
-        # 使用临时数据库文件
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
-            db_path = f.name
-
-        # 临时修改配置中的数据库路径
-        import config
-        original_db = config.DATABASE_FILE
-        config.DATABASE_FILE = db_path
-
-        db = DBManager()
+        db = DBManager(database_file=temp_db_path)
         yield db
-
-        # 清理
         db.close()
-        config.DATABASE_FILE = original_db
-        if os.path.exists(db_path):
-            os.unlink(db_path)
 
     class TestInitialization:
         """测试数据库初始化"""
@@ -151,9 +137,9 @@ class TestDBManager:
             """创建测试书籍"""
             return db.add_book("测试书籍", "测试作者")
 
-        def test_add_recording_success(self, db, book_id):
+        def test_add_recording_success(self, db, book_id, temp_audio_file):
             """测试成功添加录音"""
-            db.add_recording(book_id, "/path/to/audio.wav", "转录文本")
+            db.add_recording(book_id, temp_audio_file, "转录文本")
 
             recordings = db.get_recordings_by_book(book_id)
             assert len(recordings) == 1
@@ -174,10 +160,15 @@ class TestDBManager:
             recordings = db.get_recordings_by_book(book_id)
             assert recordings == []
 
-        def test_get_recordings_multiple(self, db, book_id):
+        def test_get_recordings_multiple(self, db, book_id, temp_audio_file, tmp_path):
             """测试获取多条录音"""
-            db.add_recording(book_id, "/path/audio1.wav", "文本1")
-            db.add_recording(book_id, "/path/audio2.wav", "文本2")
+            first_file = tmp_path / "audio1.wav"
+            first_file.write_bytes(b"RIFF$$$$WAVEfmt ")
+            second_file = tmp_path / "audio2.wav"
+            second_file.write_bytes(b"RIFF$$$$WAVEfmt ")
+
+            db.add_recording(book_id, str(first_file), "文本1")
+            db.add_recording(book_id, str(second_file), "文本2")
 
             recordings = db.get_recordings_by_book(book_id)
             assert len(recordings) == 2
@@ -189,6 +180,21 @@ class TestDBManager:
             """测试无效书籍ID获取录音"""
             with pytest.raises(ValueError):
                 db.get_recordings_by_book(0)
+
+        def test_update_recording_text(self, db, book_id, temp_audio_file):
+            """测试更新录音文本"""
+            db.add_recording(book_id, temp_audio_file, "旧文本")
+            rec_id = db.get_recordings_by_book(book_id)[0][0]
+            db.update_recording(rec_id, "新文本")
+            updated = db.get_recording_by_id(rec_id)
+            assert updated[3] == "新文本"
+
+        def test_delete_recording(self, db, book_id, temp_audio_file):
+            """测试删除录音"""
+            db.add_recording(book_id, temp_audio_file, "删除文本")
+            rec_id = db.get_recordings_by_book(book_id)[0][0]
+            db.delete_recording(rec_id)
+            assert db.get_recordings_by_book(book_id) == []
 
     class TestQAOperations:
         """测试问答操作"""

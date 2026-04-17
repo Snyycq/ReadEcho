@@ -67,6 +67,8 @@ DARK_STYLESHEET = """
     QPushButton { background-color: #0d6efd; border-radius: 5px; padding: 8px; font-weight: bold; color: #ffffff; }
     QPushButton:hover { background-color: #0b5ed7; }
     QPushButton:disabled { background-color: #444444; color: #888888; }
+    QPushButton.danger { background-color: #dc3545; color: #ffffff; }
+    QPushButton.danger:hover { background-color: #c82333; }
     QListWidget { background-color: #3c3c3c; border: 1px solid #555555; border-radius: 5px; }
     QGroupBox { font-weight: bold; border: 2px solid #555555; border-radius: 5px; margin-top: 10px; }
     QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px 0 5px; }
@@ -80,6 +82,8 @@ LIGHT_STYLESHEET = """
     QPushButton { background-color: #2563eb; border-radius: 5px; padding: 8px; font-weight: bold; color: #ffffff; }
     QPushButton:hover { background-color: #1d4ed8; }
     QPushButton:disabled { background-color: #d1d5db; color: #6b7280; }
+    QPushButton.danger { background-color: #dc3545; color: #ffffff; }
+    QPushButton.danger:hover { background-color: #c82333; }
     QListWidget { background-color: #ffffff; border: 1px solid #d1d5db; border-radius: 5px; }
     QGroupBox { font-weight: bold; border: 2px solid #d1d5db; border-radius: 5px; margin-top: 10px; }
     QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px 0 5px; }

@@ -4,20 +4,25 @@ ReadEcho Pro 数据库管理模块
 """
 
 import sqlite3
-from config import DATABASE_FILE, LOGGER
+from config import LOGGER
 from validators import InputValidator
 
 
 class DBManager:
     """数据库管理器类，封装所有数据库操作"""
 
-    def __init__(self):
+    def __init__(self, database_file=None):
         """初始化数据库连接并创建必要的表"""
         try:
-            self.conn = sqlite3.connect(DATABASE_FILE, check_same_thread=False)
+            if database_file is None:
+                from config import DATABASE_FILE
+                database_file = DATABASE_FILE
+
+            self.database_file = database_file
+            self.conn = sqlite3.connect(self.database_file, check_same_thread=False)
             self.cursor = self.conn.cursor()
             self._create_tables()
-            LOGGER.info(f"数据库初始化成功: {DATABASE_FILE}")
+            LOGGER.info(f"数据库初始化成功: {self.database_file}")
         except sqlite3.Error as e:
             LOGGER.error(f"数据库初始化失败: {e}")
             raise
@@ -209,6 +214,73 @@ class DBManager:
             LOGGER.error(f"查询书籍ID失败: {e}")
             return None
 
+    def get_recording_by_id(self, recording_id):
+        """根据录音ID获取录音记录"""
+        try:
+            if not isinstance(recording_id, int) or recording_id <= 0:
+                raise ValueError("无效的录音ID")
+
+            self.cursor.execute(
+                "SELECT id, book_id, file_path, transcribed_text, timestamp FROM recordings WHERE id = ?",
+                (recording_id,)
+            )
+            return self.cursor.fetchone()
+        except (ValueError, sqlite3.Error) as e:
+            LOGGER.error(f"查询录音记录失败: {e}")
+            return None
+
+    def update_recording(self, recording_id, transcribed_text):
+        """更新录音转录文本"""
+        try:
+            if not isinstance(recording_id, int) or recording_id <= 0:
+                raise ValueError("无效的录音ID")
+            if not isinstance(transcribed_text, str) or not transcribed_text.strip():
+                raise ValueError("转录文本不能为空")
+
+            self.cursor.execute(
+                "UPDATE recordings SET transcribed_text = ? WHERE id = ?",
+                (transcribed_text.strip(), recording_id)
+            )
+            self.conn.commit()
+            LOGGER.info(f"录音记录已更新: {recording_id}")
+        except (ValueError, sqlite3.Error) as e:
+            LOGGER.error(f"更新录音记录失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def delete_recording(self, recording_id):
+        """删除录音记录"""
+        try:
+            if not isinstance(recording_id, int) or recording_id <= 0:
+                raise ValueError("无效的录音ID")
+
+            self.cursor.execute(
+                "DELETE FROM recordings WHERE id = ?",
+                (recording_id,)
+            )
+            self.conn.commit()
+            LOGGER.info(f"录音记录已删除: {recording_id}")
+        except (ValueError, sqlite3.Error) as e:
+            LOGGER.error(f"删除录音失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def delete_book(self, book_id):
+        """删除书籍及其关联数据"""
+        try:
+            if not isinstance(book_id, int) or book_id <= 0:
+                raise ValueError("无效的书籍ID")
+
+            self.cursor.execute("DELETE FROM qa WHERE book_id = ?", (book_id,))
+            self.cursor.execute("DELETE FROM recordings WHERE book_id = ?", (book_id,))
+            self.cursor.execute("DELETE FROM books WHERE id = ?", (book_id,))
+            self.conn.commit()
+            LOGGER.info(f"书籍及其关联数据已删除: {book_id}")
+        except (ValueError, sqlite3.Error) as e:
+            LOGGER.error(f"删除书籍失败: {e}")
+            self.conn.rollback()
+            raise
+
     # 录音相关方法
 
     def add_recording(self, book_id, file_path, transcribed_text):
@@ -259,11 +331,11 @@ class DBManager:
             self.cursor.execute(
                 """SELECT id, file_path, transcribed_text, timestamp 
                    FROM recordings WHERE book_id = ? 
-                   ORDER BY timestamp DESC""",
+                   ORDER BY id DESC""",
                 (book_id,)
             )
             return self.cursor.fetchall()
-        except (ValueError, sqlite3.Error) as e:
+        except sqlite3.Error as e:
             LOGGER.error(f"获取录音列表失败: {e}")
             return []
 
@@ -319,12 +391,12 @@ class DBManager:
             self.cursor.execute(
                 """SELECT id, question, answer, timestamp 
                    FROM qa WHERE book_id = ? 
-                   ORDER BY timestamp DESC 
+                   ORDER BY id DESC 
                    LIMIT ? OFFSET ?""",
                 (book_id, limit, offset)
             )
             return self.cursor.fetchall()
-        except (ValueError, sqlite3.Error) as e:
+        except sqlite3.Error as e:
             LOGGER.error(f"获取问答列表失败: {e}")
             return []
 
@@ -333,6 +405,7 @@ class DBManager:
         try:
             if self.conn:
                 self.conn.close()
+                self.conn = None
                 LOGGER.info("数据库连接已关闭")
         except sqlite3.Error as e:
             LOGGER.error(f"关闭数据库连接失败: {e}")

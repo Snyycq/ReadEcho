@@ -70,6 +70,10 @@ data/
 *.tmp
 *.temp
 temp/
+temp_note.wav
+
+# Claude working directory
+.claude/
 
 # Documentation builds
 docs/_build/

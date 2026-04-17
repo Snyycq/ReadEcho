@@ -37,7 +37,8 @@
 - **AI 摘要**：Ollama 自动生成书籍摘要
 - **智能问答**：根据书籍内容回答问题
 - **书籍管理**：添加、搜索、分页显示书籍
-- **主题切换**：深色/浅色模式支持
+- **主题切换**：深色/浅色模式支持，危险按钮自动适配主题
+- **终端输出**：固定黑底白字Terminal组件，不受主题切换影响，提供一致的输出体验
 - **日志诊断**：完整日志记录和错误排查
 
 ---
@@ -77,13 +78,13 @@ Windows 10+ / Linux / macOS
 ```
 ReadEcho/
 ├── main.py              # 应用入口
-├── config.py            # 配置与日志
+├── config.py            # 配置、日志与主题样式
 ├── app_services.py      # 服务协调层
 ├── database_manager.py  # SQLite 数据库管理
 ├── ai_processor.py      # Whisper 与 Ollama AI 处理
 ├── recording_manager.py # 录音管理
-├── ui_builder.py        # PyQt6 UI 构建
-├── event_handler.py     # 事件处理与信号
+├── ui_builder.py        # PyQt6 UI 构建与Terminal组件
+├── event_handler.py     # 事件处理、信号与主题适配
 ├── utils.py             # 工具函数
 ├── validators.py        # 输入验证工具
 ├── model_cache.py       # Whisper 模型缓存

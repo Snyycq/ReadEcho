@@ -3,6 +3,9 @@ ReadEcho Pro 应用服务模块
 整合所有业务逻辑服务，提供统一的接口
 """
 
+import json
+import urllib.parse
+import urllib.request
 from config import SAMPLE_RATE, TEMP_AUDIO_FILE, LOGGER
 from database_manager import DBManager
 from ai_processor import AIService
@@ -12,10 +15,10 @@ from recording_manager import RecordingService
 class AppServices:
     """应用服务管理器，整合所有业务逻辑服务"""
 
-    def __init__(self):
+    def __init__(self, db_path=None):
         """初始化所有服务"""
         try:
-            self.db = DBManager()
+            self.db = DBManager(database_file=db_path)
             self.ai_service = AIService()
             self.recording_service = RecordingService()
             self.current_book_id = None
@@ -73,6 +76,55 @@ class AppServices:
             LOGGER.error(f"查询书籍失败: {e}")
             return None
 
+    def search_online_books(self, query: str, limit: int = 25):
+        """在线搜索图书，并返回模糊匹配结果"""
+        try:
+            if not query or not isinstance(query, str):
+                return []
+
+            # 优先使用 title 字段搜索，提升中文书名匹配准确性。
+            books = self._openlibrary_search(query, limit, use_title=True)
+            if not books:
+                books = self._openlibrary_search(query, limit, use_title=False)
+            return books
+        except Exception as e:
+            LOGGER.warning(f"在线搜索图书失败，回退到本地匹配: {e}")
+            local_books = self.db.get_books(query, limit)
+            results = []
+            for book_id, title, author in local_books:
+                results.append({
+                    'source': 'local',
+                    'book_id': book_id,
+                    'title': title,
+                    'author': author,
+                })
+            return results
+
+    def _openlibrary_search(self, query: str, limit: int, use_title: bool):
+        """OpenLibrary 搜索辅助函数"""
+        field = 'title' if use_title else 'q'
+        url = (
+            "https://openlibrary.org/search.json?"
+            f"{field}={urllib.parse.quote(query)}&limit={limit}"
+        )
+        with urllib.request.urlopen(url, timeout=10) as response:
+            raw = response.read().decode('utf-8')
+            data = json.loads(raw)
+
+        books = []
+        for item in data.get('docs', []):
+            title = item.get('title') or item.get('title_suggest') or "Unknown"
+            authors = item.get('author_name') or []
+            author = ", ".join(authors) if authors else ""
+            key = item.get('key', '')
+            books.append({
+                'source': 'online',
+                'title': title,
+                'author': author,
+                'key': key,
+            })
+        return books
+
     def add_note(self, title: str, content: str, note_type: str = "Summary"):
         """添加笔记"""
         try:
@@ -96,6 +148,40 @@ class AppServices:
         except Exception as e:
             LOGGER.error(f"获取录音记录失败: {e}")
             return []
+
+    def get_recording_by_id(self, recording_id: int):
+        """根据录音ID获取录音记录"""
+        try:
+            return self.db.get_recording_by_id(recording_id)
+        except Exception as e:
+            LOGGER.error(f"查询录音记录失败: {e}")
+            return None
+
+    def update_recording_text(self, recording_id: int, transcribed_text: str):
+        """更新录音转录文本"""
+        try:
+            self.db.update_recording(recording_id, transcribed_text)
+        except Exception as e:
+            LOGGER.error(f"更新录音记录失败: {e}")
+            raise
+
+    def delete_recording(self, recording_id: int):
+        """删除指定录音记录"""
+        try:
+            self.db.delete_recording(recording_id)
+        except Exception as e:
+            LOGGER.error(f"删除录音记录失败: {e}")
+            raise
+
+    def delete_book(self, book_id: int):
+        """删除指定书籍及其关联数据"""
+        try:
+            self.db.delete_book(book_id)
+            if self.current_book_id == book_id:
+                self.clear_current_book()
+        except Exception as e:
+            LOGGER.error(f"删除书籍失败: {e}")
+            raise
 
     def add_qa(self, book_id: int, question: str, answer: str):
         """添加问答记录"""

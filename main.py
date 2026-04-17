@@ -30,11 +30,13 @@ class ReadEchoPro(QWidget):
     # UI 控件声明，用于 VS Code 类型检查
     search_btn: "QPushButton"
     add_book_btn: "QPushButton"
+    delete_book_btn: "QPushButton"
     book_list: "QListWidget"
-    sum_btn: "QPushButton"
     qa_btn: "QPushButton"
     voice_btn: "QPushButton"
     view_recording_btn: "QPushButton"
+    edit_recording_btn: "QPushButton"
+    delete_recording_btn: "QPushButton"
     theme_btn: "QPushButton"
     display: "QTextEdit"
     title_input: "QLineEdit"
@@ -115,16 +117,20 @@ class ReadEchoPro(QWidget):
         try:
             # 搜索和书籍管理
             self.search_btn.clicked.connect(self.handler.search_books)
-            self.add_book_btn.clicked.connect(self.handler.add_new_book)
+            self.add_book_btn.clicked.connect(self.handler.import_selected_book)
             self.book_list.itemClicked.connect(self.handler.on_book_selected)
 
             # AI功能
-            self.sum_btn.clicked.connect(self.handler.start_summary)
             self.qa_btn.clicked.connect(self.handler.ask_ai_question)
 
             # 录音功能
             self.voice_btn.clicked.connect(self.handler.toggle_recording)
             self.view_recording_btn.clicked.connect(self.handler.view_selected_recording)
+            self.edit_recording_btn.clicked.connect(self.handler.edit_selected_recording)
+            self.delete_recording_btn.clicked.connect(self.handler.delete_selected_recording)
+
+            # 书籍管理
+            self.delete_book_btn.clicked.connect(self.handler.delete_selected_book)
 
             # 主题切换
             self.theme_btn.clicked.connect(self.handler.toggle_theme)
@@ -155,10 +161,26 @@ class ReadEchoPro(QWidget):
             if self.dark_mode:
                 self.setStyleSheet(DARK_STYLESHEET)
                 self.theme_btn.setText("☀️")
+                if hasattr(self, 'display'):
+                    # Terminal保持黑色背景白色文字，不受主题影响
+                    self.display.document().setDefaultStyleSheet(
+                        "body { color: #ffffff; background-color: transparent; }"
+                        "p, span, div, pre, h1, h2, h3, h4, h5, h6 { color: #ffffff; }"
+                    )
+                    current_html = self.display.toHtml()
+                    self.display.setHtml(current_html)
                 LOGGER.debug("已应用深色主题")
             else:
                 self.setStyleSheet(LIGHT_STYLESHEET)
                 self.theme_btn.setText("🌙")
+                if hasattr(self, 'display'):
+                    # Terminal保持黑色背景白色文字，不受主题影响
+                    self.display.document().setDefaultStyleSheet(
+                        "body { color: #ffffff; background-color: transparent; }"
+                        "p, span, div, pre, h1, h2, h3, h4, h5, h6 { color: #ffffff; }"
+                    )
+                    current_html = self.display.toHtml()
+                    self.display.setHtml(current_html)
                 LOGGER.debug("已应用浅色主题")
         except Exception as e:
             LOGGER.error(f"主题应用失败: {str(e)}")
