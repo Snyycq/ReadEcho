@@ -1,5 +1,40 @@
 # ReadEcho Pro 测试文档
 
+## 📊 测试状态概览
+
+**最后更新**: 2026-04-22  
+**测试框架**: pytest 9.0.3  
+**测试通过率**: 100% (99/99 测试通过)  
+**主要问题**: 无（所有测试通过）  
+**总体覆盖率**: 33%（基于2026-04-21测试覆盖率报告）
+
+### test文件夹用途
+本目录是ReadEcho项目的专用测试框架，包含：
+- **单元测试**：测试单个模块的功能正确性
+- **集成测试**：测试模块间交互和完整工作流
+- **测试文档**：测试框架使用说明和状态跟踪
+- **测试配置**：pytest配置、fixtures和运行脚本
+
+### 相关文档
+- **[TODO.md](TODO.md)** - 测试待办事项和计划
+- **[CHANGELOG.md](CHANGELOG.md)** - 测试框架变更日志
+- **[运行测试脚本](../../run_tests.bat)** - Windows一键测试脚本
+
+### 测试报告
+- **[docs/reports/test_coverage_report.md](../../docs/reports/test_coverage_report.md)** - 详细测试覆盖率分析报告
+- **[docs/reports/code_quality_report.md](../../docs/reports/code_quality_report.md)** - 代码质量问题分析报告
+
+### 快速开始
+```bash
+# 运行所有测试
+pytest
+
+# 生成覆盖率报告
+pytest --cov=. --cov-report=html
+```
+
+---
+
 ## 目录
 
 1. [测试框架](#测试框架)
@@ -266,6 +301,6 @@ pytest -v --tb=long
 
 - ✅ 已完成：搭建 pytest 测试框架
 - ✅ 已完成：编写基础单元测试
-- ⏳ 计划中：编写更多集成测试
+- ✅ 已完成：编写基础集成测试
 - ⏳ 计划中：添加测试覆盖率监控
 - ⏳ 计划中：持续集成配置

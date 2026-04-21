@@ -3,14 +3,13 @@ utils.py 单元测试
 测试工具函数
 """
 
-import pytest
 import sys
 import os
 
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from utils import format_summary_content, truncate_text
+from utils import format_summary_content, truncate_text  # noqa: E402
 
 
 class TestFormatSummaryContent:

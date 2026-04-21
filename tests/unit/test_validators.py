@@ -10,7 +10,7 @@ import os
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from validators import InputValidator
+from validators import InputValidator  # noqa: E402
 
 
 class TestInputValidator:
@@ -43,7 +43,7 @@ class TestInputValidator:
 
         def test_title_with_special_chars_removal(self):
             """测试标题中特殊字符移除"""
-            title = "书名:<>\"/?*|"
+            title = '书名:<>"/?*|'
             result = InputValidator.validate_book_title(title)
             # 移除非法文件名字符，包括冒号
             assert result == "书名"

@@ -22,7 +22,7 @@ def format_summary_content(content):
     # 1. 将"1."、"2."等数字列表转换为有序列表
     # 2. 将"- "、"* "等转换为无序列表
     # 3. 将段落分隔开
-    lines = content.split('\n')
+    lines = content.split("\n")
     formatted_lines = []
     in_list = False
     list_type = None  # "ol" 或 "ul"
@@ -38,14 +38,21 @@ def format_summary_content(content):
             continue
 
         # 检查是否是有序列表项
-        if line[:2] in ["1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9."] or line[:3] in ["10.", "11.", "12.", "13.", "14.", "15."]:
+        if line[:2] in ["1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9."] or line[:3] in [
+            "10.",
+            "11.",
+            "12.",
+            "13.",
+            "14.",
+            "15.",
+        ]:
             if not in_list or list_type != "ol":
                 if in_list:
                     formatted_lines.append("</li></ul>" if list_type == "ul" else "</li></ol>")
                 formatted_lines.append("<ol>")
                 in_list = True
                 list_type = "ol"
-            item_text = line[line.find('.') + 1:].strip()
+            item_text = line[line.find(".") + 1:].strip()
             formatted_lines.append(f"<li>{item_text}</li>")
         # 检查是否是无序列表项
         elif line[:2] in ["- ", "* ", "• "]:
@@ -69,7 +76,7 @@ def format_summary_content(content):
     if in_list:
         formatted_lines.append("</li></ul>" if list_type == "ul" else "</li></ol>")
 
-    return ''.join(formatted_lines)
+    return "".join(formatted_lines)
 
 
 def truncate_text(text, max_length=50, suffix="..."):

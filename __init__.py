@@ -13,12 +13,12 @@ from ai_processor import AIService, ModelLoaderThread, AIProcessThread
 from validators import InputValidator
 
 __all__ = [
-    'LOGGER',
-    'DBManager',
-    'AIService',
-    'ModelLoaderThread',
-    'AIProcessThread',
-    'InputValidator',
-    'WHISPER_MODEL',
-    'OLLAMA_MODEL',
+    "LOGGER",
+    "DBManager",
+    "AIService",
+    "ModelLoaderThread",
+    "AIProcessThread",
+    "InputValidator",
+    "WHISPER_MODEL",
+    "OLLAMA_MODEL",
 ]

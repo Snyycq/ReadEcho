@@ -3,14 +3,12 @@ ReadEcho Pro AI处理模块
 包含所有AI相关的线程和功能：Whisper转录、Ollama总结和问答
 """
 
-import os
 import torch
-import whisper
 import ollama
 from PyQt6.QtCore import QThread, pyqtSignal
 from typing import Optional, Callable
 
-from config import WHISPER_MODEL, OLLAMA_MODEL, LOGGER, TEMP_AUDIO_FILE
+from config import WHISPER_MODEL, OLLAMA_MODEL, LOGGER
 from validators import InputValidator
 from model_cache import model_cache
 
@@ -24,7 +22,7 @@ class ModelLoaderThread(QThread):
     def __init__(self, model_size: str = WHISPER_MODEL):
         """
         初始化模型加载线程
-        
+
         Args:
             model_size: 模型大小，默认使用配置中的设置
         """
@@ -35,7 +33,7 @@ class ModelLoaderThread(QThread):
         """在后台线程中加载Whisper模型，使用缓存"""
         try:
             LOGGER.info(f"开始加载Whisper模型: {self.model_size}")
-            
+
             # 使用缓存机制加载模型
             model = model_cache.get_whisper_model(self.model_size)
             LOGGER.info("Whisper模型加载成功")
@@ -73,7 +71,7 @@ class AIProcessThread(QThread):
         """执行AI处理任务"""
         try:
             LOGGER.info(f"开始处理AI任务: {self.action_type}")
-            
+
             if self.action_type == "Summarize":
                 self.progress_updated.emit("正在生成摘要...")
                 self._generate_summary()
@@ -85,7 +83,7 @@ class AIProcessThread(QThread):
                 self._answer_question()
             else:
                 raise ValueError(f"未知的操作类型: {self.action_type}")
-                
+
         except FileNotFoundError as e:
             error_msg = f"文件未找到: {str(e)}"
             LOGGER.error(error_msg)
@@ -107,21 +105,19 @@ class AIProcessThread(QThread):
         try:
             book_title = InputValidator.validate_book_title(self.data)
             prompt = f"请为书籍《{book_title}》提供一个详细的摘要。包括主要情节和关键思想。使用中文回答。"
-            
+
             LOGGER.debug(f"调用Ollama生成摘要: 模型={OLLAMA_MODEL}")
             resp = ollama.chat(
-                model=OLLAMA_MODEL,
-                messages=[{'role': 'user', 'content': prompt}],
-                stream=False
+                model=OLLAMA_MODEL, messages=[{"role": "user", "content": prompt}], stream=False
             )
-            
-            if not resp or 'message' not in resp:
+
+            if not resp or "message" not in resp:
                 raise RuntimeError("Ollama返回了无效的响应")
-            
-            summary = resp['message'].get('content', '')
+
+            summary = resp["message"].get("content", "")
             if not summary:
                 raise RuntimeError("生成的摘要为空")
-            
+
             LOGGER.info("摘要生成成功")
             self.result_ready.emit("Summary", summary)
         except Exception as e:
@@ -133,23 +129,20 @@ class AIProcessThread(QThread):
         try:
             if self.stt_model is None:
                 raise RuntimeError("模型尚未加载，请稍候")
-            
+
             # 验证音频文件
             audio_path = InputValidator.validate_audio_file(self.data)
             LOGGER.info(f"开始转录音频: {audio_path}")
-            
+
             # 使用Whisper转录音频
             result = self.stt_model.transcribe(
-                audio_path,
-                fp16=torch.cuda.is_available(),
-                beam_size=1,
-                verbose=False
+                audio_path, fp16=torch.cuda.is_available(), beam_size=1, verbose=False
             )
-            
-            if not result or 'text' not in result:
+
+            if not result or "text" not in result:
                 raise RuntimeError("转录失败，未获得结果")
-            
-            transcribed_text = result['text'].strip()
+
+            transcribed_text = result["text"].strip()
             if not transcribed_text:
                 LOGGER.warning("转录结果为空文本")
 
@@ -172,12 +165,10 @@ class AIProcessThread(QThread):
                 f"{text}"
             )
             resp = ollama.chat(
-                model=OLLAMA_MODEL,
-                messages=[{'role': 'user', 'content': prompt}],
-                stream=False
+                model=OLLAMA_MODEL, messages=[{"role": "user", "content": prompt}], stream=False
             )
-            if resp and 'message' in resp:
-                corrected = resp['message'].get('content', '').strip()
+            if resp and "message" in resp:
+                corrected = resp["message"].get("content", "").strip()
                 if corrected:
                     return corrected
             return text
@@ -190,23 +181,21 @@ class AIProcessThread(QThread):
         try:
             question = InputValidator.validate_question(self.data)
             book_title = InputValidator.validate_book_title(self.book_title)
-            
+
             prompt = f"用户提问关于书籍《{book_title}》的问题：\n{question}\n\n请用中文详细回答这个问题。"
-            
+
             LOGGER.debug(f"调用Ollama回答问题: 模型={OLLAMA_MODEL}")
             resp = ollama.chat(
-                model=OLLAMA_MODEL,
-                messages=[{'role': 'user', 'content': prompt}],
-                stream=False
+                model=OLLAMA_MODEL, messages=[{"role": "user", "content": prompt}], stream=False
             )
-            
-            if not resp or 'message' not in resp:
+
+            if not resp or "message" not in resp:
                 raise RuntimeError("Ollama返回了无效的响应")
-            
-            answer = resp['message'].get('content', '')
+
+            answer = resp["message"].get("content", "")
             if not answer:
                 raise RuntimeError("生成的答案为空")
-            
+
             LOGGER.info("问答完成")
             self.result_ready.emit("Q&A", answer)
         except Exception as e:
@@ -226,14 +215,14 @@ class AIService:
     def load_whisper_model(self, callback: Callable):
         """
         异步加载Whisper模型
-        
+
         Args:
             callback: 模型加载完成后的回调函数
         """
         if self.model_loader and self.model_loader.isRunning():
             LOGGER.warning("模型加载已在进行中")
             return
-        
+
         try:
             self.model_loader = ModelLoaderThread()
             self.model_loader.model_loaded.connect(callback)
@@ -248,11 +237,11 @@ class AIService:
     def create_summary_thread(self, book_title: str, callback: Callable) -> AIProcessThread:
         """
         创建总结生成线程
-        
+
         Args:
             book_title: 书籍标题
             callback: 结果回调函数
-            
+
         Returns:
             AIProcessThread实例
         """
@@ -266,15 +255,17 @@ class AIService:
             LOGGER.error(f"创建总结线程失败: {e}")
             raise
 
-    def create_transcription_thread(self, audio_path: str, book_title: str, callback: Callable) -> AIProcessThread:
+    def create_transcription_thread(
+        self, audio_path: str, book_title: str, callback: Callable
+    ) -> AIProcessThread:
         """
         创建音频转录线程
-        
+
         Args:
             audio_path: 音频文件路径
             book_title: 书籍标题
             callback: 结果回调函数
-            
+
         Returns:
             AIProcessThread实例
         """
@@ -289,15 +280,17 @@ class AIService:
             LOGGER.error(f"创建转录线程失败: {e}")
             raise
 
-    def create_qa_thread(self, question: str, book_title: str, callback: Callable) -> AIProcessThread:
+    def create_qa_thread(
+        self, question: str, book_title: str, callback: Callable
+    ) -> AIProcessThread:
         """
         创建问答线程
-        
+
         Args:
             question: 问题文本
             book_title: 书籍标题
             callback: 结果回调函数
-            
+
         Returns:
             AIProcessThread实例
         """
@@ -315,7 +308,7 @@ class AIService:
     def set_stt_model(self, model: object) -> None:
         """
         设置已加载的Whisper模型
-        
+
         Args:
             model: Whisper模型实例
         """

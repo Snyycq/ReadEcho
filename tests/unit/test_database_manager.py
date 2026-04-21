@@ -7,12 +7,11 @@ import pytest
 import sys
 import os
 import sqlite3
-import tempfile
 
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from database_manager import DBManager
+from database_manager import DBManager  # noqa: E402
 
 
 class TestDBManager:
@@ -36,10 +35,10 @@ class TestDBManager:
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = [row[0] for row in cursor.fetchall()]
 
-            assert 'notes' in tables
-            assert 'books' in tables
-            assert 'recordings' in tables
-            assert 'qa' in tables
+            assert "notes" in tables
+            assert "books" in tables
+            assert "recordings" in tables
+            assert "qa" in tables
 
         def test_indexes_created(self, db):
             """测试索引是否正确创建"""
@@ -48,9 +47,9 @@ class TestDBManager:
             cursor.execute("SELECT name FROM sqlite_master WHERE type='index'")
             indexes = [row[0] for row in cursor.fetchall()]
 
-            assert 'idx_books_title' in indexes
-            assert 'idx_recordings_book_id' in indexes
-            assert 'idx_qa_book_id' in indexes
+            assert "idx_books_title" in indexes
+            assert "idx_recordings_book_id" in indexes
+            assert "idx_qa_book_id" in indexes
 
     class TestBookOperations:
         """测试书籍操作"""
@@ -256,12 +255,12 @@ class TestDBManager:
         def test_rollback_on_error(self, db):
             """测试错误时回滚"""
             # 先添加一个有效书籍
-            book_id = db.add_book("有效书籍")
+            db.add_book("有效书籍")
 
             # 尝试添加无效录音（应该失败）
             try:
                 db.add_recording(999, "/path/audio.wav", "文本")
-            except:
+            except Exception:
                 pass
 
             # 验证数据库连接仍然有效

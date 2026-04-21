@@ -10,7 +10,7 @@ import os
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from app_services import AppServices
+from app_services import AppServices  # noqa: E402
 
 
 class TestAppServices:
@@ -91,8 +91,8 @@ class TestAppServices:
             """测试获取当前书籍"""
             services.set_current_book(1, "测试书籍")
             book = services.get_current_book()
-            assert book['id'] == 1
-            assert book['title'] == "测试书籍"
+            assert book["id"] == 1
+            assert book["title"] == "测试书籍"
 
         def test_clear_current_book(self, services):
             """测试清除当前书籍"""

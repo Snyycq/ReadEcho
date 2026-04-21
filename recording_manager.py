@@ -62,10 +62,7 @@ class RecordingService:
         self.is_recording = True
         # 预分配录音缓冲区
         self.recording_data = sd.rec(
-            int(RECORDING_DURATION * self.fs),
-            samplerate=self.fs,
-            channels=1,
-            dtype=np.float32
+            int(RECORDING_DURATION * self.fs), samplerate=self.fs, channels=1, dtype=np.float32
         )
         return True
 
@@ -73,11 +70,7 @@ class RecordingService:
         """停止录音并返回录音完成线程"""
         self.is_recording = False
         # 创建后台线程处理录音保存
-        self.recording_thread = RecordingFinishThread(
-            self.recording_data,
-            self.fs,
-            TEMP_AUDIO_FILE
-        )
+        self.recording_thread = RecordingFinishThread(self.recording_data, self.fs, TEMP_AUDIO_FILE)
         return self.recording_thread
 
     def get_recording_status(self):

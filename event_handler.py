@@ -29,10 +29,10 @@ class EventHandler:
         if not data or not isinstance(data, dict):
             return
 
-        source = data.get('source')
-        if source == 'local':
-            book_id = data.get('book_id')
-            title = data.get('title', item.text().split(' - ')[0])
+        source = data.get("source")
+        if source == "local":
+            book_id = data.get("book_id")
+            title = data.get("title", item.text().split(" - ")[0])
             self.window.title_input.setText(title)
             self.load_recordings_for_book(book_id)
             self.services.set_current_book(book_id, title)
@@ -53,7 +53,9 @@ class EventHandler:
         """执行在线模糊搜索"""
         query = self.window.search_input.text().strip()
         if not query:
-            self.window.display.append("<b>[System]:</b> Search query is empty. Showing local bookshelf.")
+            self.window.display.append(
+                "<b>[System]:</b> Search query is empty. Showing local bookshelf."
+            )
             self.refresh_bookshelf()
             return
 
@@ -66,19 +68,22 @@ class EventHandler:
             self.window.display.append("<b>[System]:</b> No online search results found.")
             return
 
-        self.window.display.append("<b>[System]:</b> Search results are shown in the Search Results list below. Select one and click Import Selected Book.")
+        self.window.display.append(
+            "<b>[System]:</b> Search results are shown in the Search Results list below. "
+            "Select one and click Import Selected Book."
+        )
         for result in self.current_search_results:
             if isinstance(result, dict):
-                title = result.get('title', 'Unknown')
-                author = result.get('author', '')
+                title = result.get("title", "Unknown")
+                author = result.get("author", "")
             else:
-                title = result[1] if len(result) > 1 else 'Unknown'
-                author = result[2] if len(result) > 2 else ''
+                title = result[1] if len(result) > 1 else "Unknown"
+                author = result[2] if len(result) > 2 else ""
                 result = {
-                    'source': 'local',
-                    'book_id': result[0] if len(result) > 0 else None,
-                    'title': title,
-                    'author': author,
+                    "source": "local",
+                    "book_id": result[0] if len(result) > 0 else None,
+                    "title": title,
+                    "author": author,
                 }
 
             item_text = f"{title}"
@@ -94,11 +99,12 @@ class EventHandler:
         if not data or not isinstance(data, dict):
             return
 
-        title = data.get('title', item.text().split(' - ')[0])
-        author = data.get('author', '')
+        title = data.get("title", item.text().split(" - ")[0])
+        author = data.get("author", "")
         self.window.title_input.setText(title)
         self.window.display.append(
-            f"<b>[System]:</b> Selected online result '{title}'{' by ' + author if author else ''}. Click Import Selected Book to add it."
+            f"<b>[System]:</b> Selected online result '{title}'"
+            f"{' by ' + author if author else ''}. Click Import Selected Book to add it."
         )
 
     def refresh_bookshelf(self, search_query=""):
@@ -113,33 +119,40 @@ class EventHandler:
                 item_text += f" - {author}"
             self.window.book_list.addItem(item_text)
             item = self.window.book_list.item(self.window.book_list.count() - 1)
-            item.setData(256, {
-                'source': 'local',
-                'book_id': book_id,
-                'title': title,
-                'author': author,
-            })
+            item.setData(
+                256,
+                {
+                    "source": "local",
+                    "book_id": book_id,
+                    "title": title,
+                    "author": author,
+                },
+            )
 
     def import_selected_book(self):
         """导入当前选中的在线搜索结果书籍"""
         selected_items = self.window.search_results_list.selectedItems()
         if not selected_items:
-            self.window.display.append("<b>[System]:</b> Please select an online search result first.")
+            self.window.display.append(
+                "<b>[System]:</b> Please select an online search result first."
+            )
             return
 
         data = selected_items[0].data(256)
-        if not isinstance(data, dict) or data.get('source') != 'online':
+        if not isinstance(data, dict) or data.get("source") != "online":
             self.window.display.append("<b>[System]:</b> Please select an online search result.")
             return
 
-        title = data.get('title', '').strip()
-        author = data.get('author', '').strip()
+        title = data.get("title", "").strip()
+        author = data.get("author", "").strip()
         if not title:
             self.window.display.append("<b>[System]:</b> Selected online book has no title.")
             return
 
         book_id = self.services.add_book(title, author)
-        self.window.display.append(f"<b>[System]:</b> Imported '{title}'{' by ' + author if author else ''}.")
+        self.window.display.append(
+            f"<b>[System]:</b> Imported '{title}'{' by ' + author if author else ''}."
+        )
         self.refresh_bookshelf()
         self.services.set_current_book(book_id, title)
         self.window.title_input.setText(title)
@@ -154,8 +167,8 @@ class EventHandler:
         result = QMessageBox.question(
             self.window,
             "Delete Book",
-            f"Are you sure you want to delete the selected book and all its associated notes?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            "Are you sure you want to delete the selected book and all its associated notes?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if result != QMessageBox.StandardButton.Yes:
             return
@@ -177,7 +190,7 @@ class EventHandler:
         title = self.window.title_input.text()
         if not title:
             return
-        if hasattr(self.window, 'sum_btn'):
+        if hasattr(self.window, "sum_btn"):
             self.window.sum_btn.setEnabled(False)
         # 使用服务创建总结生成线程
         self.window.thread = self.services.create_summary_thread(title, self.on_finished)
@@ -188,7 +201,9 @@ class EventHandler:
         title = self.window.title_input.text()
         question = self.window.qa_input.text()
         if not title:
-            self.window.display.append("<b>[System]:</b> Please select or enter a book title first.")
+            self.window.display.append(
+                "<b>[System]:</b> Please select or enter a book title first."
+            )
             return
         if not question:
             self.window.display.append("<b>[System]:</b> Please enter a question.")
@@ -222,10 +237,12 @@ class EventHandler:
             self.window.display.append("<hr>")
         else:
             # Terminal固定黑色背景，使用固定边框颜色
-            border_color = '#555555'
+            border_color = "#555555"
 
             self.window.display.append(
-                "<div style='padding: 12px; margin: 12px 0; border: 1px solid " + border_color + "; border-radius: 10px; background-color: transparent;'>"
+                "<div style='padding: 12px; margin: 12px 0; border: 1px solid "
+                + border_color
+                + "; border-radius: 10px; background-color: transparent;'>"
                 f"<b>[{note_type}]</b>"
                 f"<div style='margin-top:10px; white-space: pre-wrap; line-height:1.5;'>"
                 f"{content}"
@@ -254,11 +271,11 @@ class EventHandler:
             # 其他类型的笔记（如Summary）
             self.services.add_note(title, content, note_type)
 
-        if hasattr(self.window, 'sum_btn'):
+        if hasattr(self.window, "sum_btn"):
             self.window.sum_btn.setEnabled(True)
         self.window.voice_btn.setEnabled(True)
         self.window.voice_btn.setText("Start Recording")
-        self.window.voice_btn.setProperty('class', '')
+        self.window.voice_btn.setProperty("class", "")
         self.window.voice_btn.style().unpolish(self.window.voice_btn)
         self.window.voice_btn.style().polish(self.window.voice_btn)
         self.window.apply_theme()
@@ -274,16 +291,20 @@ class EventHandler:
         title = self.window.title_input.text()
 
         # Terminal固定黑色背景，使用固定边框颜色
-        border_color = '#555555'
+        border_color = "#555555"
 
         # 显示问答结果
         from utils import format_summary_content
 
         formatted_answer = format_summary_content(content)
         self.window.display.append(
-            "<div style='padding: 12px; margin: 12px 0; border: 1px solid " + border_color + "; border-radius: 10px; background-color: transparent;'>"
+            "<div style='padding: 12px; margin: 12px 0; border: 1px solid "
+            + border_color
+            + "; border-radius: 10px; "
+            + "background-color: transparent;'>"
             f"<h3 style='margin:0 0 10px 0;'>❓ Q&A - {title}</h3>"
-            f"<div style='margin-bottom:10px; padding:10px; background: transparent; border-radius:6px;'>"
+            f"<div style='margin-bottom:10px; padding:10px; "
+            f"background: transparent; border-radius:6px;'>"
             f"<b>Question:</b> {self.window.last_question}</div>"
             f"<div style='padding:10px; background: transparent; border-radius:6px;'>"
             f"<b>Answer:</b>{formatted_answer}</div>"
@@ -323,10 +344,12 @@ class EventHandler:
         if self.services.start_recording():
             self.window.is_recording = True
             self.window.voice_btn.setText("Stop Recording")
-            self.window.voice_btn.setProperty('class', 'danger')
+            self.window.voice_btn.setProperty("class", "danger")
             self.window.voice_btn.style().unpolish(self.window.voice_btn)
             self.window.voice_btn.style().polish(self.window.voice_btn)
-            self.window.display.append("<b>[System]:</b> Recording started... Press 'Stop Recording' to finish.")
+            self.window.display.append(
+                "<b>[System]:</b> Recording started... Press 'Stop Recording' to finish."
+            )
         else:
             self.window.display.append("<b>[System]:</b> Failed to start recording.")
 
@@ -371,7 +394,9 @@ class EventHandler:
                 self.window.display.append(f"<b>[Recording]:</b> {timestamp}")
                 self.window.display.append(f"<pre>{text}</pre>")
             else:
-                self.window.display.append(f"<b>[Recording View]:</b> Selected recording ID: {rec_id}")
+                self.window.display.append(
+                    f"<b>[Recording View]:</b> Selected recording ID: {rec_id}"
+                )
 
     def edit_selected_recording(self):
         """编辑选中的语音笔记文本"""
@@ -391,10 +416,7 @@ class EventHandler:
 
         _, _, file_path, text, timestamp = recording
         new_text, ok = QInputDialog.getMultiLineText(
-            self.window,
-            "Edit Recording Note",
-            "Transcribed text:",
-            text
+            self.window, "Edit Recording Note", "Transcribed text:", text
         )
         if not ok or new_text is None:
             return
@@ -421,7 +443,7 @@ class EventHandler:
             self.window,
             "Delete Recording",
             "Are you sure you want to delete the selected recording?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if result != QMessageBox.StandardButton.Yes:
             return

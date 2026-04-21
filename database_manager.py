@@ -16,6 +16,7 @@ class DBManager:
         try:
             if database_file is None:
                 from config import DATABASE_FILE
+
                 database_file = DATABASE_FILE
 
             self.database_file = database_file
@@ -31,7 +32,7 @@ class DBManager:
         """创建所有必要的数据库表"""
         try:
             # 现有表格：笔记（总结、语音笔记）
-            self.cursor.execute('''
+            self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS notes (
                     id INTEGER PRIMARY KEY,
                     title TEXT,
@@ -39,20 +40,20 @@ class DBManager:
                     type TEXT,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            ''')
+            """)
 
             # 新表格：书籍
-            self.cursor.execute('''
+            self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS books (
                     id INTEGER PRIMARY KEY,
                     title TEXT,
                     author TEXT,
                     added_date DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            ''')
+            """)
 
             # 新表格：录音历史（与书籍关联）
-            self.cursor.execute('''
+            self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS recordings (
                     id INTEGER PRIMARY KEY,
                     book_id INTEGER,
@@ -61,10 +62,10 @@ class DBManager:
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(book_id) REFERENCES books(id)
                 )
-            ''')
+            """)
 
             # 新表格：AI问答
-            self.cursor.execute('''
+            self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS qa (
                     id INTEGER PRIMARY KEY,
                     book_id INTEGER,
@@ -73,12 +74,14 @@ class DBManager:
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(book_id) REFERENCES books(id)
                 )
-            ''')
-            
+            """)
+
             # 创建索引以优化查询性能
-            self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_books_title ON books(title)')
-            self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_recordings_book_id ON recordings(book_id)')
-            self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_qa_book_id ON qa(book_id)')
+            self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_books_title ON books(title)")
+            self.cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_recordings_book_id ON recordings(book_id)"
+            )
+            self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_qa_book_id ON qa(book_id)")
 
             self.conn.commit()
             LOGGER.debug("数据库表创建成功")
@@ -92,10 +95,10 @@ class DBManager:
             title = InputValidator.validate_book_title(title, max_length=100)
             if not content or not isinstance(content, str):
                 raise ValueError("内容不能为空")
-            
+
             self.cursor.execute(
                 "INSERT INTO notes (title, content, type) VALUES (?, ?, ?)",
-                (title, content, note_type)
+                (title, content, note_type),
             )
             self.conn.commit()
             LOGGER.info(f"添加笔记成功: {title} ({note_type})")
@@ -108,14 +111,14 @@ class DBManager:
 
     def add_book(self, title, author=""):
         """添加新书籍到书架
-        
+
         Args:
             title: 书籍标题
             author: 作者名称（可选）
-            
+
         Returns:
             新添加书籍的ID
-            
+
         Raises:
             ValueError: 如果输入无效
             sqlite3.Error: 如果数据库操作失败
@@ -123,11 +126,8 @@ class DBManager:
         try:
             title = InputValidator.validate_book_title(title)
             author = InputValidator.validate_author_name(author)
-            
-            self.cursor.execute(
-                "INSERT INTO books (title, author) VALUES (?, ?)",
-                (title, author)
-            )
+
+            self.cursor.execute("INSERT INTO books (title, author) VALUES (?, ?)", (title, author))
             self.conn.commit()
             book_id = self.cursor.lastrowid
             LOGGER.info(f"添加书籍成功: {title} (ID: {book_id})")
@@ -139,12 +139,12 @@ class DBManager:
 
     def get_books(self, search_query="", limit=50, offset=0):
         """获取书籍列表，支持模糊搜索和分页
-        
+
         Args:
             search_query: 搜索关键词
             limit: 返回的最大结果数
             offset: 分页偏移量
-            
+
         Returns:
             书籍列表 [(id, title, author), ...]
         """
@@ -152,18 +152,18 @@ class DBManager:
             if search_query:
                 search_query = search_query.strip()
                 self.cursor.execute(
-                    """SELECT id, title, author FROM books 
-                       WHERE title LIKE ? OR author LIKE ? 
-                       ORDER BY added_date DESC 
+                    """SELECT id, title, author FROM books
+                       WHERE title LIKE ? OR author LIKE ?
+                       ORDER BY added_date DESC
                        LIMIT ? OFFSET ?""",
-                    (f"%{search_query}%", f"%{search_query}%", limit, offset)
+                    (f"%{search_query}%", f"%{search_query}%", limit, offset),
                 )
             else:
                 self.cursor.execute(
-                    """SELECT id, title, author FROM books 
-                       ORDER BY added_date DESC 
+                    """SELECT id, title, author FROM books
+                       ORDER BY added_date DESC
                        LIMIT ? OFFSET ?""",
-                    (limit, offset)
+                    (limit, offset),
                 )
             return self.cursor.fetchall()
         except sqlite3.Error as e:
@@ -172,10 +172,10 @@ class DBManager:
 
     def get_books_count(self, search_query=""):
         """获取书籍总数（用于分页）
-        
+
         Args:
             search_query: 搜索关键词
-            
+
         Returns:
             书籍总数
         """
@@ -184,7 +184,7 @@ class DBManager:
                 search_query = search_query.strip()
                 self.cursor.execute(
                     "SELECT COUNT(*) FROM books WHERE title LIKE ? OR author LIKE ?",
-                    (f"%{search_query}%", f"%{search_query}%")
+                    (f"%{search_query}%", f"%{search_query}%"),
                 )
             else:
                 self.cursor.execute("SELECT COUNT(*) FROM books")
@@ -195,19 +195,16 @@ class DBManager:
 
     def get_book_by_title(self, title):
         """根据书名获取书籍ID
-        
+
         Args:
             title: 书籍标题
-            
+
         Returns:
             书籍ID，不存在则返回None
         """
         try:
             title = InputValidator.validate_book_title(title)
-            self.cursor.execute(
-                "SELECT id FROM books WHERE title = ?",
-                (title,)
-            )
+            self.cursor.execute("SELECT id FROM books WHERE title = ?", (title,))
             result = self.cursor.fetchone()
             return result[0] if result else None
         except (ValueError, sqlite3.Error) as e:
@@ -221,8 +218,9 @@ class DBManager:
                 raise ValueError("无效的录音ID")
 
             self.cursor.execute(
-                "SELECT id, book_id, file_path, transcribed_text, timestamp FROM recordings WHERE id = ?",
-                (recording_id,)
+                "SELECT id, book_id, file_path, transcribed_text, timestamp "
+                "FROM recordings WHERE id = ?",
+                (recording_id,),
             )
             return self.cursor.fetchone()
         except (ValueError, sqlite3.Error) as e:
@@ -239,7 +237,7 @@ class DBManager:
 
             self.cursor.execute(
                 "UPDATE recordings SET transcribed_text = ? WHERE id = ?",
-                (transcribed_text.strip(), recording_id)
+                (transcribed_text.strip(), recording_id),
             )
             self.conn.commit()
             LOGGER.info(f"录音记录已更新: {recording_id}")
@@ -254,10 +252,7 @@ class DBManager:
             if not isinstance(recording_id, int) or recording_id <= 0:
                 raise ValueError("无效的录音ID")
 
-            self.cursor.execute(
-                "DELETE FROM recordings WHERE id = ?",
-                (recording_id,)
-            )
+            self.cursor.execute("DELETE FROM recordings WHERE id = ?", (recording_id,))
             self.conn.commit()
             LOGGER.info(f"录音记录已删除: {recording_id}")
         except (ValueError, sqlite3.Error) as e:
@@ -285,12 +280,12 @@ class DBManager:
 
     def add_recording(self, book_id, file_path, transcribed_text):
         """添加录音记录
-        
+
         Args:
             book_id: 书籍ID
             file_path: 录音文件路径
             transcribed_text: 转录文本
-            
+
         Raises:
             ValueError: 如果输入无效
             sqlite3.Error: 如果数据库操作失败
@@ -298,15 +293,15 @@ class DBManager:
         try:
             if not isinstance(book_id, int) or book_id <= 0:
                 raise ValueError("无效的书籍ID")
-            
+
             file_path = InputValidator.validate_audio_file(file_path)
-            
+
             if not isinstance(transcribed_text, str):
                 raise ValueError("转录文本必须是字符串")
-            
+
             self.cursor.execute(
                 "INSERT INTO recordings (book_id, file_path, transcribed_text) VALUES (?, ?, ?)",
-                (book_id, file_path, transcribed_text)
+                (book_id, file_path, transcribed_text),
             )
             self.conn.commit()
             LOGGER.info(f"添加录音成功: 书籍ID={book_id}")
@@ -317,22 +312,22 @@ class DBManager:
 
     def get_recordings_by_book(self, book_id):
         """获取指定书籍的所有录音记录
-        
+
         Args:
             book_id: 书籍ID
-            
+
         Returns:
             录音列表 [(id, file_path, transcribed_text, timestamp), ...]
         """
         try:
             if not isinstance(book_id, int) or book_id <= 0:
                 raise ValueError("无效的书籍ID")
-            
+
             self.cursor.execute(
-                """SELECT id, file_path, transcribed_text, timestamp 
-                   FROM recordings WHERE book_id = ? 
+                """SELECT id, file_path, transcribed_text, timestamp
+                   FROM recordings WHERE book_id = ?
                    ORDER BY id DESC""",
-                (book_id,)
+                (book_id,),
             )
             return self.cursor.fetchall()
         except sqlite3.Error as e:
@@ -343,12 +338,12 @@ class DBManager:
 
     def add_qa(self, book_id, question, answer):
         """添加问答记录
-        
+
         Args:
             book_id: 书籍ID
             question: 问题
             answer: 答案
-            
+
         Raises:
             ValueError: 如果输入无效
             sqlite3.Error: 如果数据库操作失败
@@ -356,15 +351,15 @@ class DBManager:
         try:
             if not isinstance(book_id, int) or book_id <= 0:
                 raise ValueError("无效的书籍ID")
-            
+
             question = InputValidator.validate_question(question)
-            
+
             if not answer or not isinstance(answer, str):
                 raise ValueError("答案不能为空")
-            
+
             self.cursor.execute(
                 "INSERT INTO qa (book_id, question, answer) VALUES (?, ?, ?)",
-                (book_id, question, answer)
+                (book_id, question, answer),
             )
             self.conn.commit()
             LOGGER.info(f"添加问答记录成功: 书籍ID={book_id}")
@@ -375,25 +370,25 @@ class DBManager:
 
     def get_qa_by_book(self, book_id, limit=50, offset=0):
         """获取指定书籍的问答记录
-        
+
         Args:
             book_id: 书籍ID
             limit: 返回的最大结果数
             offset: 分页偏移量
-            
+
         Returns:
             问答列表 [(id, question, answer, timestamp), ...]
         """
         try:
             if not isinstance(book_id, int) or book_id <= 0:
                 raise ValueError("无效的书籍ID")
-            
+
             self.cursor.execute(
-                """SELECT id, question, answer, timestamp 
-                   FROM qa WHERE book_id = ? 
-                   ORDER BY id DESC 
+                """SELECT id, question, answer, timestamp
+                   FROM qa WHERE book_id = ?
+                   ORDER BY id DESC
                    LIMIT ? OFFSET ?""",
-                (book_id, limit, offset)
+                (book_id, limit, offset),
             )
             return self.cursor.fetchall()
         except sqlite3.Error as e:

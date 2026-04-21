@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # ReadEcho Pro 应用服务
+  readecho:
+    build:
+      context: .
+      target: runtime
+    container_name: readecho-pro
+    ports:
+      - "8080:8080"  # 如果需要Web界面的话
+    environment:
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - DATABASE_FILE=/data/readecho.db
+      - LOG_DIR=/data/logs
+    volumes:
+      - readecho_data:/data
+      - ./config:/home/readecho/app/config  # 挂载配置文件
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # 开发环境服务
+  readecho-dev:
+    build:
+      context: .
+      target: dev
+    container_name: readecho-dev
+    volumes:
+      - .:/app
+      - readecho_dev_data:/data
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - PYTHONPATH=/app
+    command: python -m pytest tests/ -v --tb=short
+    profiles:
+      - dev
+
+  # 测试环境服务
+  readecho-test:
+    build:
+      context: .
+      target: runtime
+    container_name: readecho-test
+    environment:
+      - DEBUG=false
+      - LOG_LEVEL=WARNING
+      - DATABASE_FILE=/tmp/test.db
+    command: python -m pytest tests/ --cov=. --cov-report=term-missing
+    profiles:
+      - test
+
+volumes:
+  readecho_data:
+    driver: local
+  readecho_dev_data:
+    driver: local

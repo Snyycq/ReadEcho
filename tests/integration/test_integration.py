@@ -6,12 +6,11 @@
 import pytest
 import sys
 import os
-import tempfile
 
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from app_services import AppServices
+from app_services import AppServices  # noqa: E402
 
 
 class TestBookRecordingWorkflow:
@@ -119,7 +118,7 @@ class TestThemeSwitching:
             modes.append(services.toggle_theme())
 
         for i in range(1, len(modes)):
-            assert modes[i] != modes[i-1]
+            assert modes[i] != modes[i - 1]
 
 
 class TestServiceLifecycle:

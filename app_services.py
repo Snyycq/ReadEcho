@@ -10,6 +10,7 @@ from config import SAMPLE_RATE, TEMP_AUDIO_FILE, LOGGER
 from database_manager import DBManager
 from ai_processor import AIService
 from recording_manager import RecordingService
+import book_search
 
 
 class AppServices:
@@ -25,6 +26,10 @@ class AppServices:
             self.current_book_title = ""
             self.dark_mode = True
             self.stt_model = None  # Whisper模型，由AI服务管理
+
+            # 初始化书籍搜索服务
+            self.search_service = book_search.get_search_service(self.db.conn)
+
             LOGGER.info("应用服务初始化成功")
         except Exception as e:
             LOGGER.error(f"应用服务初始化失败: {e}", exc_info=True)
@@ -35,11 +40,11 @@ class AppServices:
     def add_book(self, title: str, author: str = "") -> int:
         """
         添加新书籍
-        
+
         Args:
             title: 书籍标题
             author: 作者名称
-            
+
         Returns:
             新书籍的ID
         """
@@ -77,53 +82,48 @@ class AppServices:
             return None
 
     def search_online_books(self, query: str, limit: int = 25):
-        """在线搜索图书，并返回模糊匹配结果"""
+        """多数据源在线搜索图书"""
         try:
             if not query or not isinstance(query, str):
                 return []
 
-            # 优先使用 title 字段搜索，提升中文书名匹配准确性。
-            books = self._openlibrary_search(query, limit, use_title=True)
-            if not books:
-                books = self._openlibrary_search(query, limit, use_title=False)
-            return books
+            # 使用新的搜索服务
+            online_results = self.search_service.search(query, limit_per_source=limit // 3 + 1)
+
+            # 如果在线搜索结果不足，补充本地书籍
+            if len(online_results) < limit // 2:
+                local_books = self.db.get_books(query, limit - len(online_results))
+                for book_id, title, author in local_books:
+                    online_results.append({
+                        "source": "local",
+                        "book_id": book_id,
+                        "title": title,
+                        "author": author,
+                        "key": "",  # 本地书籍没有外部ID
+                        "metadata": {}
+                    })
+
+            # 限制返回数量
+            return online_results[:limit]
+
         except Exception as e:
             LOGGER.warning(f"在线搜索图书失败，回退到本地匹配: {e}")
+            # 失败时回退到本地搜索
             local_books = self.db.get_books(query, limit)
             results = []
             for book_id, title, author in local_books:
-                results.append({
-                    'source': 'local',
-                    'book_id': book_id,
-                    'title': title,
-                    'author': author,
-                })
+                results.append(
+                    {
+                        "source": "local",
+                        "book_id": book_id,
+                        "title": title,
+                        "author": author,
+                        "key": "",
+                        "metadata": {}
+                    }
+                )
             return results
 
-    def _openlibrary_search(self, query: str, limit: int, use_title: bool):
-        """OpenLibrary 搜索辅助函数"""
-        field = 'title' if use_title else 'q'
-        url = (
-            "https://openlibrary.org/search.json?"
-            f"{field}={urllib.parse.quote(query)}&limit={limit}"
-        )
-        with urllib.request.urlopen(url, timeout=10) as response:
-            raw = response.read().decode('utf-8')
-            data = json.loads(raw)
-
-        books = []
-        for item in data.get('docs', []):
-            title = item.get('title') or item.get('title_suggest') or "Unknown"
-            authors = item.get('author_name') or []
-            author = ", ".join(authors) if authors else ""
-            key = item.get('key', '')
-            books.append({
-                'source': 'online',
-                'title': title,
-                'author': author,
-                'key': key,
-            })
-        return books
 
     def add_note(self, title: str, content: str, note_type: str = "Summary"):
         """添加笔记"""
@@ -269,10 +269,7 @@ class AppServices:
 
     def get_current_book(self):
         """获取当前选中的书籍信息"""
-        return {
-            'id': self.current_book_id,
-            'title': self.current_book_title
-        }
+        return {"id": self.current_book_id, "title": self.current_book_title}
 
     def clear_current_book(self):
         """清除当前选中的书籍"""
@@ -293,14 +290,14 @@ class AppServices:
         """关闭所有服务，释放资源"""
         try:
             LOGGER.info("应用服务关闭中...")
-            
+
             # 关闭数据库连接
-            if hasattr(self.db, 'close'):
+            if hasattr(self.db, "close"):
                 self.db.close()
 
             # 清理录音资源
             self.cleanup_recording()
-            
+
             LOGGER.info("应用服务已安全关闭")
         except Exception as e:
             LOGGER.error(f"关闭应用服务时出错: {e}")

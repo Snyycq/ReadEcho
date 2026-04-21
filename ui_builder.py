@@ -4,10 +4,16 @@ ReadEcho Pro UI构建模块
 """
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit,
-    QLineEdit, QLabel, QListWidget, QGroupBox
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QTextEdit,
+    QLineEdit,
+    QLabel,
+    QListWidget,
+    QGroupBox,
 )
-from PyQt6.QtCore import Qt
 from config import WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_X, WINDOW_Y
 
 
@@ -73,16 +79,12 @@ def create_left_panel(widget):
 
     # 删除书籍按钮
     widget.delete_book_btn = QPushButton("Delete Selected Book")
-    widget.delete_book_btn.setProperty('class', 'danger')
+    widget.delete_book_btn.setProperty("class", "danger")
     left_layout.addWidget(widget.delete_book_btn)
 
     left_widget.setLayout(left_layout)
 
-    return {
-        'widget': left_widget,
-        'layout': left_layout,
-        'weight': 1
-    }
+    return {"widget": left_widget, "layout": left_layout, "weight": 1}
 
 
 def create_center_panel(widget):
@@ -146,7 +148,7 @@ def create_center_panel(widget):
         btn.setFixedWidth(100)
         btn_layout.addWidget(btn)
 
-    widget.delete_recording_btn.setProperty('class', 'danger')
+    widget.delete_recording_btn.setProperty("class", "danger")
     history_layout.addLayout(btn_layout)
 
     history_group.setLayout(history_layout)
@@ -154,11 +156,7 @@ def create_center_panel(widget):
 
     center_widget.setLayout(center_layout)
 
-    return {
-        'widget': center_widget,
-        'layout': center_layout,
-        'weight': 2
-    }
+    return {"widget": center_widget, "layout": center_layout, "weight": 2}
 
 
 def create_notes_panel(widget):
@@ -203,11 +201,7 @@ def create_notes_panel(widget):
     notes_layout.addWidget(notes_group)
     notes_widget.setLayout(notes_layout)
 
-    return {
-        'widget': notes_widget,
-        'layout': notes_layout,
-        'weight': 2
-    }
+    return {"widget": notes_widget, "layout": notes_layout, "weight": 2}
 
 
 def create_container_layout(main_layout, theme_btn):
@@ -254,15 +248,15 @@ def setup_ui(widget):
 
     # 创建左侧面板
     left_panel = create_left_panel(widget)
-    main_layout.addWidget(left_panel['widget'], left_panel['weight'])
+    main_layout.addWidget(left_panel["widget"], left_panel["weight"])
 
     # 创建中间面板（书籍/操作/录音历史）
     center_panel = create_center_panel(widget)
-    main_layout.addWidget(center_panel['widget'], center_panel['weight'])
+    main_layout.addWidget(center_panel["widget"], center_panel["weight"])
 
     # 创建右侧Notes输出面板
     notes_panel = create_notes_panel(widget)
-    main_layout.addWidget(notes_panel['widget'], notes_panel['weight'])
+    main_layout.addWidget(notes_panel["widget"], notes_panel["weight"])
 
     # 创建容器布局（包含主题按钮）
     container_layout = create_container_layout(main_layout, widget.theme_btn)

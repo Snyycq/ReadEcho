@@ -7,23 +7,36 @@ import sys
 from typing import Optional
 
 from PyQt6.QtGui import QCloseEvent
-from PyQt6.QtWidgets import QApplication, QWidget, QInputDialog, QMessageBox, QPushButton, QListWidget, QTextEdit, QLineEdit
+from PyQt6.QtWidgets import (
+    QApplication,
+    QWidget,
+    QMessageBox,
+    QPushButton,
+    QListWidget,
+    QTextEdit,
+    QLineEdit,
+)
 from PyQt6.QtCore import QTimer
 
 # 导入自定义模块
 from config import (
-    WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_X, WINDOW_Y,
-    DARK_STYLESHEET, LIGHT_STYLESHEET, LOGGER
+    WINDOW_TITLE,
+    WINDOW_WIDTH,
+    WINDOW_HEIGHT,
+    WINDOW_X,
+    WINDOW_Y,
+    DARK_STYLESHEET,
+    LIGHT_STYLESHEET,
+    LOGGER,
 )
-from utils import format_summary_content, truncate_text
 from app_services import create_app_services
-from ui_builder import setup_ui, connect_ui_signals
+from ui_builder import setup_ui
 from event_handler import create_event_handler
 
 
 class ReadEchoPro(QWidget):
     """ReadEcho Pro 主窗口类
-    
+
     管理应用程序的主窗口和协调各个模块之间的交互
     """
 
@@ -46,17 +59,17 @@ class ReadEchoPro(QWidget):
     def __init__(self):
         """初始化ReadEcho Pro主应用程序"""
         super().__init__()
-        
+
         try:
             LOGGER.info("=" * 50)
             LOGGER.info("ReadEcho Pro 应用启动")
             LOGGER.info("=" * 50)
-            
+
             # 初始化应用服务
             self.services = create_app_services()
             if not self.services:
                 raise RuntimeError("应用服务初始化失败")
-            
+
             self.fs = self.services.get_sample_rate()
             LOGGER.debug(f"采样率: {self.fs} Hz")
 
@@ -73,7 +86,7 @@ class ReadEchoPro(QWidget):
 
             # 设置UI
             self.initUI()
-            
+
             # 设置窗口属性
             self.setWindowTitle(WINDOW_TITLE)
             self.resize(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -81,7 +94,7 @@ class ReadEchoPro(QWidget):
 
             # 启动后台预加载模型（延迟以避免UI阻塞）
             QTimer.singleShot(500, self.preload_whisper)
-            
+
             LOGGER.info("应用初始化完成")
         except Exception as e:
             error_msg = f"应用初始化失败: {str(e)}"
@@ -93,7 +106,7 @@ class ReadEchoPro(QWidget):
         """初始化用户界面"""
         try:
             LOGGER.debug("开始构建UI...")
-            
+
             # 设置基本UI组件
             setup_ui(self)
 
@@ -105,7 +118,7 @@ class ReadEchoPro(QWidget):
 
             # 应用主题
             self.apply_theme()
-            
+
             LOGGER.debug("UI构建完成")
         except Exception as e:
             error_msg = f"UI初始化失败: {str(e)}"
@@ -134,7 +147,7 @@ class ReadEchoPro(QWidget):
 
             # 主题切换
             self.theme_btn.clicked.connect(self.handler.toggle_theme)
-            
+
             LOGGER.debug("UI信号连接完成")
         except Exception as e:
             error_msg = f"信号连接失败: {str(e)}"
@@ -145,13 +158,13 @@ class ReadEchoPro(QWidget):
         """异步预加载Whisper模型"""
         try:
             LOGGER.info("开始预加载Whisper模型...")
-            if hasattr(self, 'display'):
+            if hasattr(self, "display"):
                 self.display.append("<b>[系统]:</b> 正在热身GPU... 加载Whisper模型中...")
             self.services.load_whisper_model(self.handler.on_model_ready)
         except Exception as e:
             error_msg = f"模型预加载失败: {str(e)}"
             LOGGER.error(error_msg)
-            if hasattr(self, 'display'):
+            if hasattr(self, "display"):
                 self.display.append(f"<b>[错误]:</b> {error_msg}")
 
     def apply_theme(self) -> None:
@@ -161,7 +174,7 @@ class ReadEchoPro(QWidget):
             if self.dark_mode:
                 self.setStyleSheet(DARK_STYLESHEET)
                 self.theme_btn.setText("☀️")
-                if hasattr(self, 'display'):
+                if hasattr(self, "display"):
                     # Terminal保持黑色背景白色文字，不受主题影响
                     self.display.document().setDefaultStyleSheet(
                         "body { color: #ffffff; background-color: transparent; }"
@@ -173,7 +186,7 @@ class ReadEchoPro(QWidget):
             else:
                 self.setStyleSheet(LIGHT_STYLESHEET)
                 self.theme_btn.setText("🌙")
-                if hasattr(self, 'display'):
+                if hasattr(self, "display"):
                     # Terminal保持黑色背景白色文字，不受主题影响
                     self.display.document().setDefaultStyleSheet(
                         "body { color: #ffffff; background-color: transparent; }"
@@ -190,14 +203,14 @@ class ReadEchoPro(QWidget):
         event = a0
         try:
             LOGGER.info("应用正在关闭...")
-            
+
             # 清理资源
-            if hasattr(self, 'handler') and self.handler:
+            if hasattr(self, "handler") and self.handler:
                 self.handler.cleanup()
-            
-            if hasattr(self, 'services') and self.services:
+
+            if hasattr(self, "services") and self.services:
                 self.services.cleanup()
-            
+
             if event is not None:
                 event.accept()
             LOGGER.info("应用已安全关闭")
@@ -211,11 +224,11 @@ def main() -> None:
     """应用程序入口点"""
     try:
         LOGGER.info(f"正在启动 {WINDOW_TITLE}...")
-        
+
         app = QApplication(sys.argv)
         win = ReadEchoPro()
         win.show()
-        
+
         LOGGER.info("应用窗口已显示")
         sys.exit(app.exec())
     except Exception as e:
@@ -225,5 +238,5 @@ def main() -> None:
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
