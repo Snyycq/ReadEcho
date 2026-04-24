@@ -24,7 +24,6 @@ class AppServices:
             self.recording_service = RecordingService()
             self.current_book_id = None
             self.current_book_title = ""
-            self.dark_mode = True
             self.stt_model = None  # Whisper模型，由AI服务管理
 
             # 初始化书籍搜索服务
@@ -248,17 +247,6 @@ class AppServices:
         """获取录音数据（临时方法，待重构）"""
         # 注意：这直接访问内部属性，需要更好的封装
         return self.recording_service.recording_data
-
-    # --- 主题管理 ---
-
-    def toggle_theme(self):
-        """切换主题"""
-        self.dark_mode = not self.dark_mode
-        return self.dark_mode
-
-    def get_theme_mode(self):
-        """获取当前主题模式"""
-        return self.dark_mode
 
     # --- 当前书籍管理 ---
 

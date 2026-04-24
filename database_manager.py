@@ -283,7 +283,7 @@ class DBManager:
 
         Args:
             book_id: 书籍ID
-            file_path: 录音文件路径
+            file_path: 录音文件路径（或手动笔记标识符）
             transcribed_text: 转录文本
 
         Raises:
@@ -294,7 +294,9 @@ class DBManager:
             if not isinstance(book_id, int) or book_id <= 0:
                 raise ValueError("无效的书籍ID")
 
-            file_path = InputValidator.validate_audio_file(file_path)
+            # 手动笔记（以 "manual_note_" 开头）不需要音频文件验证
+            if not file_path.startswith("manual_note_"):
+                file_path = InputValidator.validate_audio_file(file_path)
 
             if not isinstance(transcribed_text, str):
                 raise ValueError("转录文本必须是字符串")

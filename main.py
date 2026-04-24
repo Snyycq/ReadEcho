@@ -1,6 +1,11 @@
 """
 ReadEcho Pro - 主程序入口
 GPU加速阅读助手的主应用程序
+
+新布局：
+- 左侧：书架 + 笔记本
+- 中间：笔记详情 + 添加笔记
+- 右侧：AI对话 + 提问
 """
 
 import sys
@@ -16,7 +21,7 @@ from PyQt6.QtWidgets import (
     QTextEdit,
     QLineEdit,
 )
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import Qt, QTimer
 
 # 导入自定义模块
 from config import (
@@ -25,8 +30,7 @@ from config import (
     WINDOW_HEIGHT,
     WINDOW_X,
     WINDOW_Y,
-    DARK_STYLESHEET,
-    LIGHT_STYLESHEET,
+    STYLESHEET,
     LOGGER,
 )
 from app_services import create_app_services
@@ -41,20 +45,19 @@ class ReadEchoPro(QWidget):
     """
 
     # UI 控件声明，用于 VS Code 类型检查
-    search_btn: "QPushButton"
-    add_book_btn: "QPushButton"
-    delete_book_btn: "QPushButton"
     book_list: "QListWidget"
-    qa_btn: "QPushButton"
-    voice_btn: "QPushButton"
-    view_recording_btn: "QPushButton"
-    edit_recording_btn: "QPushButton"
-    delete_recording_btn: "QPushButton"
-    theme_btn: "QPushButton"
-    display: "QTextEdit"
-    title_input: "QLineEdit"
-    qa_input: "QLineEdit"
-    recording_list: "QListWidget"
+    notes_list: "QListWidget"
+    add_book_btn: "QPushButton"
+    title_display: "QLineEdit"
+    note_display: "QTextEdit"
+    note_text_input: "QLineEdit"
+    add_note_btn: "QPushButton"
+    voice_note_btn: "QPushButton"
+    ai_chat_display: "QTextEdit"
+    ai_question_input: "QLineEdit"
+    ask_ai_btn: "QPushButton"
+    voice_ask_btn: "QPushButton"
+    save_note_btn: "QPushButton"
 
     def __init__(self):
         """初始化ReadEcho Pro主应用程序"""
@@ -77,7 +80,6 @@ class ReadEchoPro(QWidget):
             self.stt_model: Optional[object] = None
             self.is_recording: bool = False
             self.last_question: str = ""
-            self.dark_mode: bool = False
 
             # 创建事件处理器
             self.handler = create_event_handler(self)
@@ -128,25 +130,27 @@ class ReadEchoPro(QWidget):
     def _connect_signals(self) -> None:
         """连接UI信号到事件处理器"""
         try:
-            # 搜索和书籍管理
-            self.search_btn.clicked.connect(self.handler.search_books)
-            self.add_book_btn.clicked.connect(self.handler.import_selected_book)
-            self.book_list.itemClicked.connect(self.handler.on_book_selected)
-
-            # AI功能
-            self.qa_btn.clicked.connect(self.handler.ask_ai_question)
-
-            # 录音功能
-            self.voice_btn.clicked.connect(self.handler.toggle_recording)
-            self.view_recording_btn.clicked.connect(self.handler.view_selected_recording)
-            self.edit_recording_btn.clicked.connect(self.handler.edit_selected_recording)
-            self.delete_recording_btn.clicked.connect(self.handler.delete_selected_recording)
-
             # 书籍管理
-            self.delete_book_btn.clicked.connect(self.handler.delete_selected_book)
+            self.book_list.itemClicked.connect(self.handler.on_book_selected)
+            self.add_book_btn.clicked.connect(self.handler.show_add_book_dialog)
 
-            # 主题切换
-            self.theme_btn.clicked.connect(self.handler.toggle_theme)
+            # 笔记管理
+            self.notes_list.itemClicked.connect(self.handler.on_note_selected)
+            self.add_note_btn.clicked.connect(self.handler.add_text_note)
+            self.voice_note_btn.clicked.connect(self.handler.toggle_voice_note)
+            self.save_note_btn.clicked.connect(self.handler.save_note_edit)
+
+            # AI提问
+            self.ask_ai_btn.clicked.connect(self.handler.ask_ai_text_question)
+            self.voice_ask_btn.clicked.connect(self.handler.ask_ai_voice_question)
+
+            # 书籍右键菜单
+            self.book_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            self.book_list.customContextMenuRequested.connect(self.handler.show_book_context_menu)
+
+            # 笔记右键菜单
+            self.notes_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            self.notes_list.customContextMenuRequested.connect(self.handler.show_note_context_menu)
 
             LOGGER.debug("UI信号连接完成")
         except Exception as e:
@@ -158,43 +162,27 @@ class ReadEchoPro(QWidget):
         """异步预加载Whisper模型"""
         try:
             LOGGER.info("开始预加载Whisper模型...")
-            if hasattr(self, "display"):
-                self.display.append("<b>[系统]:</b> 正在热身GPU... 加载Whisper模型中...")
+            if hasattr(self, "ai_chat_display"):
+                self.ai_chat_display.append("<b>[系统]:</b> 正在加载Whisper模型...")
             self.services.load_whisper_model(self.handler.on_model_ready)
         except Exception as e:
             error_msg = f"模型预加载失败: {str(e)}"
             LOGGER.error(error_msg)
-            if hasattr(self, "display"):
-                self.display.append(f"<b>[错误]:</b> {error_msg}")
+            if hasattr(self, "ai_chat_display"):
+                self.ai_chat_display.append(f"<b>[错误]:</b> {error_msg}")
 
     def apply_theme(self) -> None:
-        """应用当前主题"""
+        """应用暗色主题"""
         try:
-            self.dark_mode = self.services.get_theme_mode()
-            if self.dark_mode:
-                self.setStyleSheet(DARK_STYLESHEET)
-                self.theme_btn.setText("☀️")
-                if hasattr(self, "display"):
-                    # Terminal保持黑色背景白色文字，不受主题影响
-                    self.display.document().setDefaultStyleSheet(
-                        "body { color: #ffffff; background-color: transparent; }"
-                        "p, span, div, pre, h1, h2, h3, h4, h5, h6 { color: #ffffff; }"
-                    )
-                    current_html = self.display.toHtml()
-                    self.display.setHtml(current_html)
-                LOGGER.debug("已应用深色主题")
-            else:
-                self.setStyleSheet(LIGHT_STYLESHEET)
-                self.theme_btn.setText("🌙")
-                if hasattr(self, "display"):
-                    # Terminal保持黑色背景白色文字，不受主题影响
-                    self.display.document().setDefaultStyleSheet(
-                        "body { color: #ffffff; background-color: transparent; }"
-                        "p, span, div, pre, h1, h2, h3, h4, h5, h6 { color: #ffffff; }"
-                    )
-                    current_html = self.display.toHtml()
-                    self.display.setHtml(current_html)
-                LOGGER.debug("已应用浅色主题")
+            self.setStyleSheet(STYLESHEET)
+            if hasattr(self, "ai_chat_display"):
+                self.ai_chat_display.document().setDefaultStyleSheet(
+                    "body { color: #ffffff; background-color: transparent; }"
+                    "p, span, div, pre, h1, h2, h3, h4, h5, h6 { color: #ffffff; }"
+                )
+                current_html = self.ai_chat_display.toHtml()
+                self.ai_chat_display.setHtml(current_html)
+            LOGGER.debug("已应用暗色主题")
         except Exception as e:
             LOGGER.error(f"主题应用失败: {str(e)}")
 

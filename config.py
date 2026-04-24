@@ -150,15 +150,15 @@ LOGGER.info(f"数据库文件: {DATABASE_FILE}")
 LOGGER.info(f"临时音频文件: {TEMP_AUDIO_FILE}")
 
 # --- 样式表 ---
-# 深色模式样式
-DARK_STYLESHEET = """
+# 统一暗色主题样式
+STYLESHEET = """
     QWidget {
         background-color: #2b2b2b;
         color: #ffffff;
         font-family: 'Segoe UI';
     }
     QTextEdit {
-        background-color: #1e1e1e;
+        background-color: #2b2b2b;
         border: 1px solid #3c3c3c;
         border-radius: 5px;
         padding: 10px;
@@ -196,6 +196,13 @@ DARK_STYLESHEET = """
         border: 1px solid #555555;
         border-radius: 5px;
     }
+    QListWidget::item:selected {
+        background-color: #1a1a1a;
+        color: #ffffff;
+    }
+    QListWidget::item:hover {
+        background-color: #2a2a2a;
+    }
     QGroupBox {
         font-weight: bold;
         border: 2px solid #555555;
@@ -207,21 +214,6 @@ DARK_STYLESHEET = """
         left: 10px;
         padding: 0 5px 0 5px;
     }
-"""
-
-# 浅色模式样式
-LIGHT_STYLESHEET = """
-    QWidget { background-color: #f3f4f6; color: #111111; font-family: 'Segoe UI'; }
-    QTextEdit { background-color: #ffffff; border: 1px solid #d1d5db; border-radius: 5px; padding: 10px; color: #111111; }
-    QLineEdit { background-color: #ffffff; border: 1px solid #9ca3af; padding: 5px; border-radius: 3px; color: #111111; }
-    QPushButton { background-color: #2563eb; border-radius: 5px; padding: 8px; font-weight: bold; color: #ffffff; }
-    QPushButton:hover { background-color: #1d4ed8; }
-    QPushButton:disabled { background-color: #d1d5db; color: #6b7280; }
-    QPushButton.danger { background-color: #dc3545; color: #ffffff; }
-    QPushButton.danger:hover { background-color: #c82333; }
-    QListWidget { background-color: #ffffff; border: 1px solid #d1d5db; border-radius: 5px; }
-    QGroupBox { font-weight: bold; border: 2px solid #d1d5db; border-radius: 5px; margin-top: 10px; }
-    QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px 0 5px; }
 """
 
 # --- AI 配置 ---
@@ -242,6 +234,13 @@ GOOGLE_BOOKS_API_KEY = get_env_var("GOOGLE_BOOKS_API_KEY", "")  # Google Books A
 SEARCH_CACHE_ENABLED = get_env_bool("SEARCH_CACHE_ENABLED", True)  # 启用搜索缓存
 SEARCH_CACHE_TTL = get_env_int("SEARCH_CACHE_TTL", 604800)  # 缓存过期时间（秒），默认7天
 SEARCH_TIMEOUT = get_env_int("SEARCH_TIMEOUT", 10)  # 搜索超时时间（秒）
+
+# 网络搜索配置
+WEB_SEARCH_ENABLED = get_env_bool("WEB_SEARCH_ENABLED", True)  # 启用网络搜索
+WEB_SEARCH_TIMEOUT = get_env_int("WEB_SEARCH_TIMEOUT", 15)  # 网络搜索超时时间（秒）
+WEB_SEARCH_MAX_RESULTS = get_env_int("WEB_SEARCH_MAX_RESULTS", 50)  # 网络搜索最大结果数
+WEB_SEARCH_RETRY_ATTEMPTS = get_env_int("WEB_SEARCH_RETRY_ATTEMPTS", 3)  # 网络搜索重试次数
+WEB_SEARCH_RETRY_DELAY = get_env_int("WEB_SEARCH_RETRY_DELAY", 2)  # 网络搜索重试延迟（秒）
 
 # 记录搜索配置
 if DOUBAN_API_KEY:

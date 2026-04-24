@@ -1,6 +1,11 @@
 """
 ReadEcho Pro UI构建模块
 负责创建和设置应用程序的用户界面组件
+
+新布局：
+- 左侧：上半书架，下半笔记本（选中书籍的笔记列表）
+- 中间：选中的笔记详情 + 语音/手动输入笔记
+- 右侧：AI对话框 + 语音/手动问AI
 """
 
 from PyQt6.QtWidgets import (
@@ -13,7 +18,9 @@ from PyQt6.QtWidgets import (
     QLabel,
     QListWidget,
     QGroupBox,
+    QSplitter,
 )
+from PyQt6.QtCore import Qt
 from config import WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_X, WINDOW_Y
 
 
@@ -26,28 +33,11 @@ def create_main_window(widget):
     """
     widget.setWindowTitle(WINDOW_TITLE)
     widget.setGeometry(WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT)
-    widget.dark_mode = True
-
-
-def create_theme_button(widget):
-    """
-    创建主题切换按钮
-
-    Args:
-        widget: ReadEchoPro实例
-
-    Returns:
-        QPushButton: 主题按钮
-    """
-    theme_btn = QPushButton()
-    theme_btn.setFixedSize(40, 40)
-    # 信号连接由 main.py 的 _connect_signals 统一处理
-    return theme_btn
 
 
 def create_left_panel(widget):
     """
-    创建左侧面板（书架和搜索）
+    创建左侧面板（上半书架 + 下半笔记本）
 
     Args:
         widget: ReadEchoPro实例
@@ -55,32 +45,23 @@ def create_left_panel(widget):
     Returns:
         dict: 包含左侧面板控件和布局的字典
     """
-    # 左侧栏：书架和搜索
     left_widget = QWidget()
     left_layout = QVBoxLayout()
 
-    # 搜索框
-    search_layout = QHBoxLayout()
-    widget.search_input = QLineEdit()
-    widget.search_input.setPlaceholderText("Search online books...")
-    widget.search_btn = QPushButton("Search")
-    search_layout.addWidget(widget.search_input)
-    search_layout.addWidget(widget.search_btn)
-    left_layout.addLayout(search_layout)
-
-    # 书架列表
+    # 上半部分：书架
+    left_layout.addWidget(QLabel("📚 书架"))
     widget.book_list = QListWidget()
-    left_layout.addWidget(QLabel("Bookshelf:"))
-    left_layout.addWidget(widget.book_list)
+    left_layout.addWidget(widget.book_list, 1)
 
     # 添加书籍按钮
-    widget.add_book_btn = QPushButton("Import Selected Book")
+    widget.add_book_btn = QPushButton("➕ 添加书籍")
+    widget.add_book_btn.setFixedHeight(32)
     left_layout.addWidget(widget.add_book_btn)
 
-    # 删除书籍按钮
-    widget.delete_book_btn = QPushButton("Delete Selected Book")
-    widget.delete_book_btn.setProperty("class", "danger")
-    left_layout.addWidget(widget.delete_book_btn)
+    # 下半部分：笔记本（选中书籍的笔记列表）
+    left_layout.addWidget(QLabel("📝 笔记本"))
+    widget.notes_list = QListWidget()
+    left_layout.addWidget(widget.notes_list, 1)
 
     left_widget.setLayout(left_layout)
 
@@ -89,7 +70,7 @@ def create_left_panel(widget):
 
 def create_center_panel(widget):
     """
-    创建中间面板（当前书籍、操作和录音历史）
+    创建中间面板（选中笔记详情 + 输入笔记）
 
     Args:
         widget: ReadEchoPro实例
@@ -100,139 +81,113 @@ def create_center_panel(widget):
     center_widget = QWidget()
     center_layout = QVBoxLayout()
 
-    # 书籍信息组
-    book_info_group = QGroupBox("Current Book")
-    book_info_layout = QVBoxLayout()
-    widget.title_input = QLineEdit()
-    widget.title_input.setPlaceholderText("Book title...")
-    book_info_layout.addWidget(QLabel("Title:"))
-    book_info_layout.addWidget(widget.title_input)
-    book_info_group.setLayout(book_info_layout)
-    center_layout.addWidget(book_info_group)
+    # 书名显示
+    title_layout = QHBoxLayout()
+    widget.title_display = QLineEdit()
+    widget.title_display.setReadOnly(True)
+    widget.title_display.setPlaceholderText("请从书架选择书籍")
+    widget.title_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    title_layout.addWidget(widget.title_display)
+    center_layout.addLayout(title_layout)
 
-    # 操作按钮组
-    actions_group = QGroupBox("Actions")
-    actions_layout = QVBoxLayout()
+    # 笔记详情显示区域
+    note_group = QGroupBox("📝 笔记详情")
+    note_group_layout = QVBoxLayout()
+    widget.note_display = QTextEdit()
+    widget.note_display.setPlaceholderText("选中笔记后可直接编辑...")
+    note_group_layout.addWidget(widget.note_display)
+    # 保存编辑按钮
+    widget.save_note_btn = QPushButton("💾 保存编辑")
+    widget.save_note_btn.setFixedHeight(28)
+    widget.save_note_btn.setVisible(False)
+    note_group_layout.addWidget(widget.save_note_btn)
+    note_group.setLayout(note_group_layout)
+    center_layout.addWidget(note_group, 3)
 
-    widget.voice_btn = QPushButton("Start Recording")
-    widget.voice_btn.setFixedHeight(36)
-    widget.voice_btn.setStyleSheet("font-weight: bold; padding: 6px;")
-    actions_layout.addWidget(widget.voice_btn)
+    # 添加笔记区域
+    add_note_group = QGroupBox("✏️ 添加笔记")
+    add_note_layout = QVBoxLayout()
 
-    qa_layout = QHBoxLayout()
-    widget.qa_input = QLineEdit()
-    widget.qa_input.setPlaceholderText("Ask a question about the book...")
-    widget.qa_btn = QPushButton("Ask AI")
-    widget.qa_btn.setFixedHeight(32)
-    qa_layout.addWidget(widget.qa_input)
-    qa_layout.addWidget(widget.qa_btn)
-    actions_layout.addLayout(qa_layout)
+    # 手动输入笔记（输入框 + 语音按钮 + 添加按钮）
+    text_input_layout = QHBoxLayout()
+    widget.note_text_input = QLineEdit()
+    widget.note_text_input.setPlaceholderText("输入笔记内容...")
+    text_input_layout.addWidget(widget.note_text_input)
+    widget.voice_note_btn = QPushButton("🎤")
+    widget.voice_note_btn.setFixedSize(36, 36)
+    widget.voice_note_btn.setToolTip("语音输入笔记")
+    text_input_layout.addWidget(widget.voice_note_btn)
+    widget.add_note_btn = QPushButton("➤")
+    widget.add_note_btn.setFixedSize(36, 36)
+    widget.add_note_btn.setToolTip("添加笔记")
+    text_input_layout.addWidget(widget.add_note_btn)
+    add_note_layout.addLayout(text_input_layout)
 
-    actions_group.setLayout(actions_layout)
-    center_layout.addWidget(actions_group)
-
-    # 录音历史组
-    history_group = QGroupBox("Recording History")
-    history_layout = QVBoxLayout()
-    widget.recording_list = QListWidget()
-    widget.recording_list.setMinimumHeight(180)
-    history_layout.addWidget(widget.recording_list)
-
-    btn_layout = QHBoxLayout()
-    widget.view_recording_btn = QPushButton("View")
-    widget.edit_recording_btn = QPushButton("Edit")
-    widget.delete_recording_btn = QPushButton("Delete")
-
-    for btn in (widget.view_recording_btn, widget.edit_recording_btn, widget.delete_recording_btn):
-        btn.setFixedHeight(30)
-        btn.setFixedWidth(100)
-        btn_layout.addWidget(btn)
-
-    widget.delete_recording_btn.setProperty("class", "danger")
-    history_layout.addLayout(btn_layout)
-
-    history_group.setLayout(history_layout)
-    center_layout.addWidget(history_group)
+    add_note_group.setLayout(add_note_layout)
+    center_layout.addWidget(add_note_group)
 
     center_widget.setLayout(center_layout)
 
     return {"widget": center_widget, "layout": center_layout, "weight": 2}
 
 
-def create_notes_panel(widget):
+def create_right_panel(widget):
     """
-    创建右侧Notes输出面板
+    创建右侧面板（AI对话 + 输入问题）
 
     Args:
         widget: ReadEchoPro实例
 
     Returns:
-        dict: 包含Notes面板控件和布局的字典
+        dict: 包含右侧面板控件和布局的字典
     """
-    notes_widget = QWidget()
-    notes_layout = QVBoxLayout()
+    right_widget = QWidget()
+    right_layout = QVBoxLayout()
 
-    notes_group = QGroupBox("Terminal")
-    notes_group_layout = QVBoxLayout()
-    widget.display = QTextEdit()
-    widget.display.setReadOnly(True)
-    widget.display.setMinimumHeight(260)
-    # 固定终端样式：黑色背景、白色文字、固定边框
-    widget.display.setStyleSheet("""
-        QTextEdit {
-            background-color: #000000;
-            color: #ffffff;
-            border: 1px solid #555555;
-            border-radius: 5px;
-            padding: 10px;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 12px;
-        }
-    """)
-    notes_group_layout.addWidget(widget.display)
+    # AI对话显示区域
+    chat_group = QGroupBox("🤖 AI助手")
+    chat_group_layout = QVBoxLayout()
+    widget.ai_chat_display = QTextEdit()
+    widget.ai_chat_display.setReadOnly(True)
+    chat_group_layout.addWidget(widget.ai_chat_display)
+    chat_group.setLayout(chat_group_layout)
+    right_layout.addWidget(chat_group, 3)
 
-    notes_group_layout.addWidget(QLabel("Search Results:"))
-    widget.search_results_list = QListWidget()
-    widget.search_results_list.setMinimumHeight(150)
-    notes_group_layout.addWidget(widget.search_results_list)
+    # 提问区域
+    ask_group = QGroupBox("💬 向AI提问")
+    ask_layout = QVBoxLayout()
 
-    notes_group.setLayout(notes_group_layout)
+    # 手动输入问题（输入框 + 语音按钮 + 提问按钮）
+    question_input_layout = QHBoxLayout()
+    widget.ai_question_input = QLineEdit()
+    widget.ai_question_input.setPlaceholderText("输入问题...")
+    question_input_layout.addWidget(widget.ai_question_input)
+    widget.voice_ask_btn = QPushButton("🎤")
+    widget.voice_ask_btn.setFixedSize(36, 36)
+    widget.voice_ask_btn.setToolTip("语音提问")
+    question_input_layout.addWidget(widget.voice_ask_btn)
+    widget.ask_ai_btn = QPushButton("➤")
+    widget.ask_ai_btn.setFixedSize(36, 36)
+    widget.ask_ai_btn.setToolTip("提问")
+    question_input_layout.addWidget(widget.ask_ai_btn)
+    ask_layout.addLayout(question_input_layout)
 
-    notes_layout.addWidget(notes_group)
-    notes_widget.setLayout(notes_layout)
+    ask_group.setLayout(ask_layout)
+    right_layout.addWidget(ask_group)
 
-    return {"widget": notes_widget, "layout": notes_layout, "weight": 2}
+    right_widget.setLayout(right_layout)
 
-
-def create_container_layout(main_layout, theme_btn):
-    """
-    创建容器布局，包含主题按钮和主布局
-
-    Args:
-        main_layout: 主水平布局
-        theme_btn: 主题切换按钮
-
-    Returns:
-        QVBoxLayout: 容器布局
-    """
-    container_layout = QVBoxLayout()
-    container_layout.setContentsMargins(0, 0, 0, 0)
-
-    # 顶部放置主题按钮（右对齐）
-    top_bar = QHBoxLayout()
-    top_bar.addStretch()
-    top_bar.addWidget(theme_btn)
-    container_layout.addLayout(top_bar)
-
-    # 添加主布局
-    container_layout.addLayout(main_layout)
-
-    return container_layout
+    return {"widget": right_widget, "layout": right_layout, "weight": 1}
 
 
 def setup_ui(widget):
     """
     设置完整的用户界面
+
+    新布局：
+    - 左侧：上半书架 + 下半笔记本
+    - 中间：笔记详情 + 添加笔记
+    - 右侧：AI对话 + 提问
 
     Args:
         widget: ReadEchoPro实例
@@ -240,29 +195,31 @@ def setup_ui(widget):
     # 设置窗口基本属性
     create_main_window(widget)
 
-    # 创建主题按钮
-    widget.theme_btn = create_theme_button(widget)
+    # 创建主分割器（支持拖拽调整宽度）
+    main_splitter = QSplitter()
+    main_splitter.setOrientation(Qt.Orientation.Horizontal)
+    main_splitter.setHandleWidth(4)
 
-    # 创建主布局
-    main_layout = QHBoxLayout()
-
-    # 创建左侧面板
+    # 创建左侧面板（书架 + 笔记本）
     left_panel = create_left_panel(widget)
-    main_layout.addWidget(left_panel["widget"], left_panel["weight"])
+    main_splitter.addWidget(left_panel["widget"])
 
-    # 创建中间面板（书籍/操作/录音历史）
+    # 创建中间面板（笔记详情 + 添加笔记）
     center_panel = create_center_panel(widget)
-    main_layout.addWidget(center_panel["widget"], center_panel["weight"])
+    main_splitter.addWidget(center_panel["widget"])
 
-    # 创建右侧Notes输出面板
-    notes_panel = create_notes_panel(widget)
-    main_layout.addWidget(notes_panel["widget"], notes_panel["weight"])
+    # 创建右侧面板（AI对话 + 提问）
+    right_panel = create_right_panel(widget)
+    main_splitter.addWidget(right_panel["widget"])
 
-    # 创建容器布局（包含主题按钮）
-    container_layout = create_container_layout(main_layout, widget.theme_btn)
+    # 设置初始宽度比例 1:2:1
+    main_splitter.setSizes([250, 500, 250])
 
     # 设置主窗口布局
-    widget.setLayout(container_layout)
+    outer_layout = QVBoxLayout()
+    outer_layout.setContentsMargins(0, 0, 0, 0)
+    outer_layout.addWidget(main_splitter)
+    widget.setLayout(outer_layout)
 
     return widget
 
@@ -274,13 +231,23 @@ def connect_ui_signals(widget):
     Args:
         widget: ReadEchoPro实例
     """
-    # 连接新功能信号
-    widget.search_btn.clicked.connect(widget.search_books)
-    widget.add_book_btn.clicked.connect(widget.import_selected_book)
-    widget.delete_book_btn.clicked.connect(widget.delete_selected_book)
+    # 书籍管理
     widget.book_list.itemClicked.connect(widget.on_book_selected)
-    widget.search_results_list.itemClicked.connect(widget.on_search_result_selected)
-    widget.qa_btn.clicked.connect(widget.ask_ai_question)
-    widget.view_recording_btn.clicked.connect(widget.view_selected_recording)
-    widget.edit_recording_btn.clicked.connect(widget.edit_selected_recording)
-    widget.delete_recording_btn.clicked.connect(widget.delete_selected_recording)
+    widget.add_book_btn.clicked.connect(widget.show_add_book_dialog)
+
+    # 笔记管理
+    widget.notes_list.itemClicked.connect(widget.on_note_selected)
+    widget.add_note_btn.clicked.connect(widget.add_text_note)
+    widget.voice_note_btn.clicked.connect(widget.toggle_voice_note)
+
+    # AI提问
+    widget.ask_ai_btn.clicked.connect(widget.ask_ai_text_question)
+    widget.voice_ask_btn.clicked.connect(widget.ask_ai_voice_question)
+
+    # 书籍右键菜单
+    widget.book_list.setContextMenuPolicy(3)  # CustomContextMenu
+    widget.book_list.customContextMenuRequested.connect(widget.show_book_context_menu)
+
+    # 笔记右键菜单
+    widget.notes_list.setContextMenuPolicy(3)  # CustomContextMenu
+    widget.notes_list.customContextMenuRequested.connect(widget.show_note_context_menu)
