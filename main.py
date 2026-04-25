@@ -81,13 +81,19 @@ class ReadEchoPro(QWidget):
             self.is_recording: bool = False
             self.last_question: str = ""
 
+            # 设置UI（必须在创建事件处理器之前）
+            self.initUI()
+
             # 创建事件处理器
             self.handler = create_event_handler(self)
             if not self.handler:
                 raise RuntimeError("事件处理器创建失败")
 
-            # 设置UI
-            self.initUI()
+            # 连接UI信号到事件处理器
+            self._connect_signals()
+
+            # 初始加载书架
+            self.handler.refresh_bookshelf()
 
             # 设置窗口属性
             self.setWindowTitle(WINDOW_TITLE)
@@ -111,12 +117,6 @@ class ReadEchoPro(QWidget):
 
             # 设置基本UI组件
             setup_ui(self)
-
-            # 连接UI信号到事件处理器
-            self._connect_signals()
-
-            # 初始加载书架
-            self.handler.refresh_bookshelf()
 
             # 应用主题
             self.apply_theme()
