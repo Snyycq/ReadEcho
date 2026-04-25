@@ -11,7 +11,6 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Any, Callable
-from urllib.parse import quote
 
 import requests
 from config import (
@@ -22,10 +21,6 @@ from config import (
     SEARCH_CACHE_TTL,
     SEARCH_TIMEOUT,
     WEB_SEARCH_ENABLED,
-    WEB_SEARCH_TIMEOUT,
-    WEB_SEARCH_MAX_RESULTS,
-    WEB_SEARCH_RETRY_ATTEMPTS,
-    WEB_SEARCH_RETRY_DELAY,
 )
 
 
@@ -387,7 +382,7 @@ class WebSearchSource(SearchSource):
                     ))
 
             # 按相关性排序（标题匹配度）
-            book_results.sort(key=lambda x: self._calculate_relevance(x["title"], query), reverse=True)
+            book_results.sort(key=lambda x: self._calculate_relevance(x.title, query), reverse=True)
 
             LOGGER.debug(f"网络搜索完成: {query} -> {len(book_results)} 结果")
             return book_results[:limit]  # 返回前limit个结果
@@ -721,13 +716,16 @@ class BookSearchService:
 
     def _deduplicate_results(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """结果去重"""
+        if not results:
+            return []
+
         seen = set()
         deduplicated = []
 
         for result in results:
             # 使用标题和作者作为去重键
-            title = result["title"].lower().strip()
-            author = result["author"].lower().strip() if result["author"] else ""
+            title = result.get("title", "").lower().strip()
+            author = result.get("author", "").lower().strip() if result.get("author") else ""
             key = f"{title}|{author}"
 
             if key not in seen:

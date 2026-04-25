@@ -8,8 +8,103 @@ ReadEcho Pro 事件处理器模块
 - 右侧：AI对话 + 提问
 """
 
-from PyQt6.QtWidgets import QMessageBox, QInputDialog, QDialog, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton
+from PyQt6.QtWidgets import QMessageBox, QDialog, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton
+from PyQt6.QtCore import Qt
 from config import LOGGER
+
+# 常量定义
+DATA_ROLE = Qt.ItemDataRole.UserRole
+NOTE_PREVIEW_LENGTH = 30
+DIALOG_WIDTH = 400
+DIALOG_HEIGHT = 150
+
+
+def _refresh_button_style(button):
+    """刷新按钮样式（消除重复的 unpolish/polish 模式）"""
+    button.style().unpolish(button)
+    button.style().polish(button)
+
+
+class VoiceRecordingController:
+    """通用语音录音控制器，消除 note/qa 两套录音逻辑的重复"""
+
+    def __init__(self, services, button, chat_display, thread_attr_name):
+        """
+        Args:
+            services: 服务层实例
+            button: 录音按钮控件
+            chat_display: 聊天显示控件
+            thread_attr_name: 主窗口上存储线程的属性名（如 "note_thread" 或 "qa_thread"）
+        """
+        self.services = services
+        self.button = button
+        self.chat_display = chat_display
+        self.thread_attr_name = thread_attr_name
+        self._on_transcribed_callback = None
+
+    def set_on_transcribed(self, callback):
+        """设置转录完成后的回调函数"""
+        self._on_transcribed_callback = callback
+
+    def toggle(self, is_recording):
+        """切换录音状态"""
+        if is_recording:
+            self._stop()
+        else:
+            self._start()
+
+    def _start(self):
+        """开始录音"""
+        if self.services.start_recording():
+            self.button.setText("⏹")
+            self.button.setProperty("class", "danger")
+            _refresh_button_style(self.button)
+            self.chat_display.append("<b>[系统]:</b> 正在录音... 点击停止结束")
+            return True
+        else:
+            self.chat_display.append("<b>[错误]:</b> 启动录音失败")
+            return False
+
+    def _stop(self):
+        """停止录音"""
+        self.button.setText("⏳")
+        self.button.setEnabled(False)
+
+        thread = self.services.stop_recording()
+        setattr(self.button.window(), self.thread_attr_name, thread) if hasattr(self.button, 'window') else None
+        thread.recording_ready.connect(self._on_recorded)
+        thread.start()
+
+    def _on_recorded(self, file_path):
+        """录音完成回调"""
+        if file_path.startswith("Error"):
+            self.chat_display.append(f"<b>[系统]:</b> ❌ {file_path}")
+            self.reset_button()
+            return
+
+        self.button.setText("🔄")
+
+        thread = self.services.create_transcription_thread(
+            file_path, self.services.current_book_title, self._on_transcribed
+        )
+        thread.start()
+
+    def _on_transcribed(self, note_type, content):
+        """转录完成回调"""
+        if note_type == "Error":
+            self.chat_display.append(f"<b>[错误]:</b> {content}")
+            self.reset_button()
+            return
+
+        if self._on_transcribed_callback:
+            self._on_transcribed_callback(note_type, content)
+
+    def reset_button(self):
+        """重置按钮状态"""
+        self.button.setEnabled(True)
+        self.button.setText("🎤")
+        self.button.setProperty("class", "")
+        _refresh_button_style(self.button)
 
 
 class EventHandler:
@@ -26,11 +121,28 @@ class EventHandler:
         self.services = main_window.services
         self.current_note_id = None
 
+        # 初始化录音控制器
+        self._note_recording = VoiceRecordingController(
+            services=main_window.services,
+            button=main_window.voice_note_btn,
+            chat_display=main_window.ai_chat_display,
+            thread_attr_name="note_thread"
+        )
+        self._note_recording.set_on_transcribed(self._on_voice_note_transcribed)
+
+        self._qa_recording = VoiceRecordingController(
+            services=main_window.services,
+            button=main_window.voice_ask_btn,
+            chat_display=main_window.ai_chat_display,
+            thread_attr_name="qa_thread"
+        )
+        self._qa_recording.set_on_transcribed(self._on_voice_qa_transcribed)
+
     # --- 书籍管理事件 ---
 
     def on_book_selected(self, item):
         """当选择书籍时"""
-        data = item.data(256)
+        data = item.data(DATA_ROLE)
         if not data or not isinstance(data, dict):
             return
 
@@ -61,22 +173,31 @@ class EventHandler:
         # 加载录音笔记
         recordings = self.services.get_recordings_by_book(book_id)
         for rec_id, file_path, text, timestamp in recordings:
-            display_text = f"📝 {timestamp}: {text[:30]}..." if len(text) > 30 else f"📝 {timestamp}: {text}"
+            if len(text) > NOTE_PREVIEW_LENGTH:
+                display_text = f"📝 {timestamp}: {text[:NOTE_PREVIEW_LENGTH]}..."
+            else:
+                display_text = f"📝 {timestamp}: {text}"
             self.window.notes_list.addItem(display_text)
             item = self.window.notes_list.item(self.window.notes_list.count() - 1)
-            item.setData(256, {"type": "recording", "id": rec_id, "text": text, "timestamp": timestamp})
+            item.setData(DATA_ROLE, {"type": "recording", "id": rec_id, "text": text, "timestamp": timestamp})
 
         # 加载问答记录
         qa_records = self.services.get_qa_by_book(book_id)
         for qa_id, question, answer, timestamp in qa_records:
-            display_text = f"💬 {timestamp}: {question[:30]}..." if len(question) > 30 else f"💬 {timestamp}: {question}"
+            if len(question) > NOTE_PREVIEW_LENGTH:
+                display_text = f"💬 {timestamp}: {question[:NOTE_PREVIEW_LENGTH]}..."
+            else:
+                display_text = f"💬 {timestamp}: {question}"
             self.window.notes_list.addItem(display_text)
             item = self.window.notes_list.item(self.window.notes_list.count() - 1)
-            item.setData(256, {"type": "qa", "id": qa_id, "question": question, "answer": answer, "timestamp": timestamp})
+            item.setData(
+                DATA_ROLE,
+                {"type": "qa", "id": qa_id, "question": question, "answer": answer, "timestamp": timestamp}
+            )
 
     def on_note_selected(self, item):
         """当选择笔记时"""
-        data = item.data(256)
+        data = item.data(DATA_ROLE)
         if not data or not isinstance(data, dict):
             return
 
@@ -95,11 +216,11 @@ class EventHandler:
             question = data.get("question", "")
             answer = data.get("answer", "")
             timestamp = data.get("timestamp", "")
-            self.window.note_display.append(f"<b>💬 AI问答</b>")
+            self.window.note_display.append("<b>💬 AI问答</b>")
             self.window.note_display.append(f"<b>时间:</b> {timestamp}")
             self.window.note_display.append("<hr>")
             self.window.note_display.append(f"<b>问题:</b> {question}")
-            self.window.note_display.append(f"<b>回答:</b>")
+            self.window.note_display.append("<b>回答:</b>")
             self.window.note_display.append(f"<pre>{answer}</pre>")
             self.window.note_display.setReadOnly(True)
             self.window.save_note_btn.setVisible(False)
@@ -108,7 +229,7 @@ class EventHandler:
         """显示添加书籍对话框"""
         dialog = QDialog(self.window)
         dialog.setWindowTitle("添加书籍")
-        dialog.setFixedSize(400, 150)
+        dialog.setFixedSize(DIALOG_WIDTH, DIALOG_HEIGHT)
 
         layout = QVBoxLayout()
 
@@ -203,7 +324,7 @@ class EventHandler:
             self.refresh_bookshelf()
             self.window.notes_list.clear()
             self.window.note_display.clear()
-            self.window.ai_chat_display.append(f"<b>[系统]:</b> 已删除书籍")
+            self.window.ai_chat_display.append("<b>[系统]:</b> 已删除书籍")
         except Exception as e:
             self.window.ai_chat_display.append(f"<b>[错误]:</b> 删除书籍失败: {e}")
 
@@ -239,53 +360,14 @@ class EventHandler:
             return
 
         if self.window.is_recording:
-            self._stop_voice_note_recording()
+            self.window.is_recording = False
+            self._note_recording._stop()
         else:
-            self._start_voice_note_recording()
-
-    def _start_voice_note_recording(self):
-        """开始语音笔记录音"""
-        if self.services.start_recording():
-            self.window.is_recording = True
-            self.window.voice_note_btn.setText("⏹")
-            self.window.voice_note_btn.setProperty("class", "danger")
-            self.window.voice_note_btn.style().unpolish(self.window.voice_note_btn)
-            self.window.voice_note_btn.style().polish(self.window.voice_note_btn)
-            self.window.ai_chat_display.append("<b>[系统]:</b> 正在录音... 点击停止结束")
-        else:
-            self.window.ai_chat_display.append("<b>[错误]:</b> 启动录音失败")
-
-    def _stop_voice_note_recording(self):
-        """停止语音笔记录音"""
-        self.window.is_recording = False
-        self.window.voice_note_btn.setText("⏳")
-        self.window.voice_note_btn.setEnabled(False)
-
-        self.window.note_thread = self.services.stop_recording()
-        self.window.note_thread.recording_ready.connect(self._on_voice_note_recorded)
-        self.window.note_thread.start()
-
-    def _on_voice_note_recorded(self, file_path):
-        """语音笔记录音完成"""
-        if file_path.startswith("Error"):
-            self.window.ai_chat_display.append(f"<b>[系统]:</b> ❌ {file_path}")
-            self._reset_voice_note_button()
-            return
-
-        self.window.voice_note_btn.setText("🔄")
-
-        self.window.thread = self.services.create_transcription_thread(
-            file_path, self.services.current_book_title, self._on_voice_note_transcribed
-        )
-        self.window.thread.start()
+            if self._note_recording._start():
+                self.window.is_recording = True
 
     def _on_voice_note_transcribed(self, note_type, content):
         """语音笔记转录完成"""
-        if note_type == "Error":
-            self.window.ai_chat_display.append(f"<b>[错误]:</b> {content}")
-            self._reset_voice_note_button()
-            return
-
         book_id = self.services.current_book_id
         if book_id:
             file_path = self.services.get_temp_audio_file()
@@ -293,15 +375,7 @@ class EventHandler:
             self.load_notes_for_book(book_id)
             self.window.ai_chat_display.append("<b>[系统]:</b> 语音笔记已保存")
 
-        self._reset_voice_note_button()
-
-    def _reset_voice_note_button(self):
-        """重置语音笔记按钮"""
-        self.window.voice_note_btn.setEnabled(True)
-        self.window.voice_note_btn.setText("🎤")
-        self.window.voice_note_btn.setProperty("class", "")
-        self.window.voice_note_btn.style().unpolish(self.window.voice_note_btn)
-        self.window.voice_note_btn.style().polish(self.window.voice_note_btn)
+        self._note_recording.reset_button()
 
     def save_note_edit(self):
         """保存笔记编辑"""
@@ -312,7 +386,7 @@ class EventHandler:
         if not selected_items:
             return
 
-        data = selected_items[0].data(256)
+        data = selected_items[0].data(DATA_ROLE)
         if not data or data.get("type") != "recording":
             return
 
@@ -338,7 +412,7 @@ class EventHandler:
         if not selected_items:
             return
 
-        data = selected_items[0].data(256)
+        data = selected_items[0].data(DATA_ROLE)
         if not data:
             return
 
@@ -390,57 +464,18 @@ class EventHandler:
             return
 
         if self.window.is_recording:
-            self._stop_voice_qa_recording()
+            self.window.is_recording = False
+            self._qa_recording._stop()
         else:
-            self._start_voice_qa_recording()
-
-    def _start_voice_qa_recording(self):
-        """开始语音提问录音"""
-        if self.services.start_recording():
-            self.window.is_recording = True
-            self.window.voice_ask_btn.setText("⏹")
-            self.window.voice_ask_btn.setProperty("class", "danger")
-            self.window.voice_ask_btn.style().unpolish(self.window.voice_ask_btn)
-            self.window.voice_ask_btn.style().polish(self.window.voice_ask_btn)
-            self.window.ai_chat_display.append("<b>[系统]:</b> 正在录音问题... 点击停止结束")
-        else:
-            self.window.ai_chat_display.append("<b>[错误]:</b> 启动录音失败")
-
-    def _stop_voice_qa_recording(self):
-        """停止语音提问录音"""
-        self.window.is_recording = False
-        self.window.voice_ask_btn.setText("⏳")
-        self.window.voice_ask_btn.setEnabled(False)
-
-        self.window.qa_thread = self.services.stop_recording()
-        self.window.qa_thread.recording_ready.connect(self._on_voice_qa_recorded)
-        self.window.qa_thread.start()
-
-    def _on_voice_qa_recorded(self, file_path):
-        """语音提问录音完成"""
-        if file_path.startswith("Error"):
-            self.window.ai_chat_display.append(f"<b>[系统]:</b> ❌ {file_path}")
-            self._reset_voice_ask_button()
-            return
-
-        self.window.voice_ask_btn.setText("🔄")
-
-        self.window.thread = self.services.create_transcription_thread(
-            file_path, self.services.current_book_title, self._on_voice_qa_transcribed
-        )
-        self.window.thread.start()
+            if self._qa_recording._start():
+                self.window.is_recording = True
 
     def _on_voice_qa_transcribed(self, note_type, content):
         """语音提问转录完成"""
-        if note_type == "Error":
-            self.window.ai_chat_display.append(f"<b>[错误]:</b> {content}")
-            self._reset_voice_ask_button()
-            return
-
         question = content.strip()
         if not question:
             self.window.ai_chat_display.append("<b>[系统]:</b> 未检测到语音内容")
-            self._reset_voice_ask_button()
+            self._qa_recording.reset_button()
             return
 
         self._process_ai_question(question)
@@ -469,7 +504,7 @@ class EventHandler:
 
     def _on_ai_answer_ready(self, note_type, content):
         """AI回答准备就绪"""
-        self._reset_voice_ask_button()
+        self._qa_recording.reset_button()
         self.window.ask_ai_btn.setEnabled(True)
         self.window.ask_ai_btn.setText("➤")
 
@@ -490,14 +525,6 @@ class EventHandler:
             self.services.add_qa(book_id, self.window.last_question, content)
             self.load_notes_for_book(book_id)
 
-    def _reset_voice_ask_button(self):
-        """重置语音提问按钮"""
-        self.window.voice_ask_btn.setEnabled(True)
-        self.window.voice_ask_btn.setText("🎤")
-        self.window.voice_ask_btn.setProperty("class", "")
-        self.window.voice_ask_btn.style().unpolish(self.window.voice_ask_btn)
-        self.window.voice_ask_btn.style().polish(self.window.voice_ask_btn)
-
     # --- 模型加载事件 ---
 
     def on_model_ready(self, model):
@@ -516,7 +543,7 @@ class EventHandler:
         if not item:
             return
 
-        data = item.data(256)
+        data = item.data(DATA_ROLE)
         if not data or not isinstance(data, dict):
             return
 
@@ -546,7 +573,7 @@ class EventHandler:
         data = None
         for i in range(self.window.book_list.count()):
             item = self.window.book_list.item(i)
-            item_data = item.data(256)
+            item_data = item.data(DATA_ROLE)
             if item_data and item_data.get("book_id") == book_id:
                 data = item_data
                 break
@@ -560,7 +587,7 @@ class EventHandler:
         # 创建编辑对话框
         dialog = QDialog(self.window)
         dialog.setWindowTitle("编辑书籍")
-        dialog.setFixedSize(400, 150)
+        dialog.setFixedSize(DIALOG_WIDTH, DIALOG_HEIGHT)
 
         layout = QVBoxLayout()
 
@@ -610,7 +637,7 @@ class EventHandler:
                 self.refresh_bookshelf()
                 self.services.set_current_book(book_id, new_title)
                 self.window.title_display.setText(f"{new_title}" + (f" - {new_author}" if new_author else ""))
-                self.window.ai_chat_display.append(f"<b>[系统]:</b> 书籍信息已更新")
+                self.window.ai_chat_display.append("<b>[系统]:</b> 书籍信息已更新")
             except Exception as e:
                 QMessageBox.warning(self.window, "错误", f"更新书籍失败: {e}")
 

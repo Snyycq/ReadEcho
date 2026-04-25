@@ -3,9 +3,6 @@ ReadEcho Pro 应用服务模块
 整合所有业务逻辑服务，提供统一的接口
 """
 
-import json
-import urllib.parse
-import urllib.request
 from config import SAMPLE_RATE, TEMP_AUDIO_FILE, LOGGER
 from database_manager import DBManager
 from ai_processor import AIService
@@ -25,6 +22,7 @@ class AppServices:
             self.current_book_id = None
             self.current_book_title = ""
             self.stt_model = None  # Whisper模型，由AI服务管理
+            self.dark_mode = True  # 默认深色模式
 
             # 初始化书籍搜索服务
             self.search_service = book_search.get_search_service(self.db.conn)
@@ -122,7 +120,6 @@ class AppServices:
                     }
                 )
             return results
-
 
     def add_note(self, title: str, content: str, note_type: str = "Summary"):
         """添加笔记"""
@@ -263,6 +260,18 @@ class AppServices:
         """清除当前选中的书籍"""
         self.current_book_id = None
         self.current_book_title = ""
+
+    # --- 主题管理 ---
+
+    def toggle_theme(self):
+        """切换主题模式（深色/浅色）"""
+        self.dark_mode = not self.dark_mode
+        LOGGER.info(f"主题已切换: {'深色' if self.dark_mode else '浅色'}模式")
+        return self.dark_mode
+
+    def get_theme_mode(self):
+        """获取当前主题模式"""
+        return self.dark_mode
 
     # --- 实用方法 ---
 

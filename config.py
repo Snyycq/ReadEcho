@@ -122,19 +122,52 @@ def setup_logging():
 LOGGER = setup_logging()
 
 # --- FFMPEG 配置 ---
-# 从环境变量 FFMPEG_PATH 读取，回退到默认值
-# 注意：路径里用的是双反斜杠 \\ 或者单斜杠 /
-FFMPEG_PATH = get_env_var(
-    "FFMPEG_PATH", r"E:\ffmpeg-8.1-essentials_build\ffmpeg-8.1-essentials_build\bin"
-)
+# 从环境变量 FFMPEG_PATH 读取，自动检测或回退到默认值
+import shutil
+
+
+def _find_ffmpeg() -> Optional[str]:
+    """自动发现ffmpeg：环境变量 → PATH → 常见安装位置"""
+    # 1. 检查环境变量
+    env_path = get_env_var("FFMPEG_PATH", "")
+    if env_path:
+        candidate = Path(env_path) / ("ffmpeg.exe" if os.name == "nt" else "ffmpeg")
+        if candidate.exists():
+            return str(candidate.parent)
+        # 也检查路径本身是否就是目录
+        if Path(env_path).is_dir():
+            ffmpeg_in_dir = Path(env_path) / ("ffmpeg.exe" if os.name == "nt" else "ffmpeg")
+            if ffmpeg_in_dir.exists():
+                return str(Path(env_path))
+
+    # 2. 检查系统PATH中是否已有ffmpeg
+    if shutil.which("ffmpeg"):
+        return None  # 已在PATH中，无需额外处理
+
+    # 3. 常见安装位置
+    common_paths = [
+        Path.home() / "ffmpeg" / "bin",
+        Path("/usr/local/bin"),
+        Path("/opt/ffmpeg/bin"),
+    ]
+    for p in common_paths:
+        ffmpeg_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+        if (p / ffmpeg_name).exists():
+            return str(p)
+
+    LOGGER.warning("FFmpeg未找到，请设置FFMPEG_PATH环境变量")
+    return None
+
+
+FFMPEG_PATH = _find_ffmpeg()
 
 # 将ffmpeg路径添加到系统PATH（如果路径存在且不在PATH中）
 if FFMPEG_PATH and os.path.exists(FFMPEG_PATH):
     if FFMPEG_PATH not in os.environ.get("PATH", ""):
         os.environ["PATH"] += os.pathsep + FFMPEG_PATH
         LOGGER.info(f"已将FFMPEG路径添加到系统PATH: {FFMPEG_PATH}")
-else:
-    LOGGER.warning(f"FFMPEG路径不存在或未配置: {FFMPEG_PATH}")
+elif FFMPEG_PATH:
+    LOGGER.warning(f"FFMPEG路径不存在: {FFMPEG_PATH}")
 
 # --- 应用程序常量 ---
 # 从环境变量读取，回退到默认值

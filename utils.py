@@ -3,6 +3,8 @@ ReadEcho Pro 工具函数模块
 包含各种工具函数和辅助功能
 """
 
+import re
+
 
 def format_summary_content(content):
     """
@@ -38,14 +40,7 @@ def format_summary_content(content):
             continue
 
         # 检查是否是有序列表项
-        if line[:2] in ["1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9."] or line[:3] in [
-            "10.",
-            "11.",
-            "12.",
-            "13.",
-            "14.",
-            "15.",
-        ]:
+        if re.match(r'^\d+\.', line):
             if not in_list or list_type != "ol":
                 if in_list:
                     formatted_lines.append("</li></ul>" if list_type == "ul" else "</li></ol>")

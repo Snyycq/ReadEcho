@@ -222,32 +222,3 @@ def setup_ui(widget):
     widget.setLayout(outer_layout)
 
     return widget
-
-
-def connect_ui_signals(widget):
-    """
-    连接UI控件的信号
-
-    Args:
-        widget: ReadEchoPro实例
-    """
-    # 书籍管理
-    widget.book_list.itemClicked.connect(widget.on_book_selected)
-    widget.add_book_btn.clicked.connect(widget.show_add_book_dialog)
-
-    # 笔记管理
-    widget.notes_list.itemClicked.connect(widget.on_note_selected)
-    widget.add_note_btn.clicked.connect(widget.add_text_note)
-    widget.voice_note_btn.clicked.connect(widget.toggle_voice_note)
-
-    # AI提问
-    widget.ask_ai_btn.clicked.connect(widget.ask_ai_text_question)
-    widget.voice_ask_btn.clicked.connect(widget.ask_ai_voice_question)
-
-    # 书籍右键菜单
-    widget.book_list.setContextMenuPolicy(3)  # CustomContextMenu
-    widget.book_list.customContextMenuRequested.connect(widget.show_book_context_menu)
-
-    # 笔记右键菜单
-    widget.notes_list.setContextMenuPolicy(3)  # CustomContextMenu
-    widget.notes_list.customContextMenuRequested.connect(widget.show_note_context_menu)
