@@ -9,7 +9,7 @@ import os
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from model_cache import ModelCache  # noqa: E402
+from core.model_cache import ModelCache  # noqa: E402
 
 
 class TestModelCache:

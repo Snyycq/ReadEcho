@@ -33,9 +33,9 @@ from config import (
     STYLESHEET,
     LOGGER,
 )
-from app_services import create_app_services
-from ui_builder import setup_ui
-from event_handler import create_event_handler
+from services.app_services import create_app_services
+from ui.ui_builder import setup_ui
+from ui.event_handler import create_event_handler
 
 
 class ReadEchoPro(QWidget):
@@ -48,6 +48,7 @@ class ReadEchoPro(QWidget):
     book_list: "QListWidget"
     notes_list: "QListWidget"
     add_book_btn: "QPushButton"
+    import_epub_btn: "QPushButton"
     title_display: "QLineEdit"
     note_display: "QTextEdit"
     note_text_input: "QLineEdit"
@@ -55,9 +56,11 @@ class ReadEchoPro(QWidget):
     voice_note_btn: "QPushButton"
     ai_chat_display: "QTextEdit"
     ai_question_input: "QLineEdit"
+    add_ai_menu_btn: "QPushButton"
     ask_ai_btn: "QPushButton"
     voice_ask_btn: "QPushButton"
     save_note_btn: "QPushButton"
+    model_selector: "QComboBox"
 
     def __init__(self):
         """初始化ReadEcho Pro主应用程序"""
@@ -133,12 +136,19 @@ class ReadEchoPro(QWidget):
             # 书籍管理
             self.book_list.itemClicked.connect(self.handler.on_book_selected)
             self.add_book_btn.clicked.connect(self.handler.show_add_book_dialog)
+            self.import_epub_btn.clicked.connect(self.handler.import_epub)
 
             # 笔记管理
             self.notes_list.itemClicked.connect(self.handler.on_note_selected)
             self.add_note_btn.clicked.connect(self.handler.add_text_note)
             self.voice_note_btn.clicked.connect(self.handler.toggle_voice_note)
             self.save_note_btn.clicked.connect(self.handler.save_note_edit)
+
+            # AI功能菜单
+            self.add_ai_menu_btn.clicked.connect(self.handler.show_ai_menu)
+
+            # 模型选择
+            self.model_selector.currentTextChanged.connect(self.handler.on_model_changed)
 
             # AI提问
             self.ask_ai_btn.clicked.connect(self.handler.ask_ai_text_question)
@@ -177,8 +187,8 @@ class ReadEchoPro(QWidget):
             self.setStyleSheet(STYLESHEET)
             if hasattr(self, "ai_chat_display"):
                 self.ai_chat_display.document().setDefaultStyleSheet(
-                    "body { color: #ffffff; background-color: transparent; }"
-                    "p, span, div, pre, h1, h2, h3, h4, h5, h6 { color: #ffffff; }"
+                    "body { color: #3D3229; background-color: transparent; }"
+                    "p, span, div, pre, h1, h2, h3, h4, h5, h6 { color: #3D3229; }"
                 )
                 current_html = self.ai_chat_display.toHtml()
                 self.ai_chat_display.setHtml(current_html)

@@ -3,8 +3,8 @@ ReadEcho Pro 模型缓存管理模块
 实现AI模型的单例缓存机制，避免重复加载
 """
 
-import torch
-import whisper
+import sys
+import os
 from pathlib import Path
 from typing import Optional
 from config import LOGGER, WHISPER_MODEL
@@ -52,11 +52,23 @@ class ModelCache:
             model_size: 模型大小 ("tiny", "base", "small", "medium", "large")
 
         Returns:
-            Whisper模型实例
+            Whisper模型实例，如果依赖未安装则返回None
 
         Raises:
             RuntimeError: 如果模型加载失败
         """
+        try:
+            import torch
+        except ImportError:
+            LOGGER.warning("torch 未安装，语音功能不可用。请运行: pip install torch")
+            return None
+
+        try:
+            import whisper
+        except ImportError:
+            LOGGER.warning("whisper 未安装，语音功能不可用。请运行: pip install openai-whisper")
+            return None
+
         try:
             # 检查缓存中是否已存在该模型
             if model_size in self._models:
@@ -67,9 +79,29 @@ class ModelCache:
             device = "cuda" if torch.cuda.is_available() else "cpu"
             LOGGER.info(f"加载Whisper模型: {model_size} (设备: {device})")
 
-            model = whisper.load_model(
-                model_size, device=device, download_root=str(self._cache_dir / "whisper")
-            )
+            # 修复 tqdm 的 stdout/stderr 问题（Windows 环境）
+            class SafeStream:
+                def __init__(self):
+                    self._file = open(os.devnull, 'w')
+                def write(self, s):
+                    pass
+                def flush(self):
+                    pass
+                def close(self):
+                    self._file.close()
+
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            sys.stdout = SafeStream()
+            sys.stderr = SafeStream()
+
+            try:
+                model = whisper.load_model(
+                    model_size, device=device, download_root=str(self._cache_dir / "whisper")
+                )
+            finally:
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
 
             # 缓存模型
             self._models[model_size] = model
@@ -89,6 +121,8 @@ class ModelCache:
             model_size: 要卸载的模型大小
         """
         try:
+            import torch
+
             if model_size in self._models:
                 del self._models[model_size]
                 LOGGER.info(f"已卸载模型: {model_size}")
@@ -101,6 +135,8 @@ class ModelCache:
     def clear_cache(self) -> None:
         """清空所有缓存的模型"""
         try:
+            import torch
+
             self._models.clear()
             LOGGER.info("已清空所有缓存模型")
 

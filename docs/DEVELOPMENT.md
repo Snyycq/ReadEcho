@@ -18,16 +18,28 @@
 ```
 main.py
 ├── config.py
-├── app_services.py
-├── database_manager.py
-├── ai_processor.py
-├── recording_manager.py
-├── ui_builder.py
-├── event_handler.py
-├── utils.py
-├── validators.py
-├── model_cache.py
-└── __init__.py
+├── core/
+│   ├── __init__.py
+│   ├── epub_reader.py
+│   ├── database_manager.py
+│   └── model_cache.py
+├── services/
+│   ├── __init__.py
+│   ├── app_services.py
+│   ├── ai_processor.py
+│   ├── recording_manager.py
+│   └── book_search.py
+├── ui/
+│   ├── __init__.py
+│   ├── ui_builder.py
+│   └── event_handler.py
+├── utils/
+│   ├── __init__.py
+│   └── validators.py
+├── scripts/
+│   └── start.bat
+├── tests/
+└── docs/
 ```
 
 ### 2.2 模块职责
@@ -38,26 +50,38 @@ main.py
   - 提供 `closeEvent` 优雅关闭机制
 
 - `config.py`
-  - 配置常量与路径设置
+  - 配置常量与路径设置（支持环境变量）
   - 日志系统初始化与管理
-  - 深色/浅色主题样式表定义
-  - CSS样式类（如 `.danger` 按钮）配置
-  - Terminal组件固定样式
+  - 主题样式表定义（米黄色温暖主题、暗色主题）
+  - AI 模型配置（DeepSeek、Ollama）
+  - 模型选择持久化
 
 - `app_services.py`
   - 服务协调层，封装数据库、AI、录音等功能
+  - EPUB 导入和内容获取
   - 提供统一接口给界面调用
   - 管理资源关闭和清理
 
 - `database_manager.py`
   - SQLite 数据库 CRUD
   - 表结构创建、索引、分页查询
+  - EPUB 书籍字段扩展（file_path、description、toc_json）
   - 输入验证与异常处理
 
 - `ai_processor.py`
-  - Whisper 语音识别
-  - Ollama 文本生成
+  - DeepSeek API 调用（首选）
+  - Ollama 本地模型调用（备用）
+  - Whisper 语音识别（可选）
+  - 统一的 chat_completion 接口
   - 异步线程与错误/进度信号
+  - 分段 AI 处理（ChunkedAIThread）：大文件自动分段，逐段总结后合并
+
+- `epub_reader.py`
+  - EPUB 电子书解析
+  - 元数据提取（标题、作者、简介）
+  - 目录结构提取
+  - 章节内容获取
+  - HTML 到纯文本转换
 
 - `recording_manager.py`
   - 音频录制与文件管理
@@ -65,15 +89,17 @@ main.py
 
 - `ui_builder.py`
   - PyQt6 界面构建与布局管理
-  - Terminal组件（固定黑底白字终端样式）
-  - 控件样式与主题适配配置
-  - 危险按钮样式类管理
+  - 三栏布局（书架、笔记详情、AI对话）
+  - 模型选择器
+  - AI 功能"+"菜单按钮
 
 - `event_handler.py`
   - UI 事件响应与信号处理
-  - 按钮状态管理（如录音按钮样式切换）
-  - Terminal输出内容格式化与主题适配
-  - 危险按钮样式类动态管理
+  - EPUB 导入处理
+  - AI 功能调用（分段总结、思维导图，通过"+"菜单触发）
+  - AI 进度显示
+  - 模型切换与虚拟环境重启
+  - 按钮状态管理
 
 - `utils.py`
   - 常用工具函数
@@ -105,16 +131,16 @@ main.py
 |------|------|------|
 | `main.py` | 应用入口 | 初始化 UI、服务和事件处理 |
 | `config.py` | 配置与主题 | 日志系统、深色/浅色主题样式、CSS样式类定义 |
-| `app_services.py` | 服务层 | 统一调用数据库、AI、录音接口 |
-| `database_manager.py` | 数据持久化 | SQLite 操作、查询优化 |
-| `ai_processor.py` | AI 逻辑 | 语音转写与智能问答 |
-| `recording_manager.py` | 录音管理 | 麦克风录音、文件保存 |
-| `ui_builder.py` | 界面构建 | PyQt6 组件布局、Terminal终端组件、主题样式适配 |
-| `event_handler.py` | 事件响应 | UI 交互逻辑、按钮状态管理、Terminal输出格式化 |
-| `validators.py` | 输入验证 | 防注入、防路径攻击 |
-| `model_cache.py` | 模型缓存 | Whisper 模型加载缓存 |
-| `book_search.py` | 在线搜书 | 多数据源搜索、智能缓存、结果去重 |
-| `__init__.py` | 包入口 | 统一导出常用类和变量 |
+| `core/epub_reader.py` | EPUB解析 | 电子书元数据、目录、内容提取 |
+| `core/database_manager.py` | 数据持久化 | SQLite 操作、查询优化 |
+| `core/model_cache.py` | 模型缓存 | Whisper 模型加载缓存 |
+| `services/app_services.py` | 服务层 | 统一调用数据库、AI、录音接口 |
+| `services/ai_processor.py` | AI逻辑 | 语音转写、智能问答、分段处理线程 |
+| `services/recording_manager.py` | 录音管理 | 麦克风录音、文件保存 |
+| `services/book_search.py` | 在线搜书 | 多数据源搜索、智能缓存、结果去重 |
+| `ui/ui_builder.py` | 界面构建 | PyQt6 组件布局、主题样式适配 |
+| `ui/event_handler.py` | 事件响应 | UI 交互逻辑、分段AI处理、进度显示 |
+| `utils/validators.py` | 输入验证 | 防注入、防路径攻击 |
 
 ---
 
@@ -123,31 +149,32 @@ main.py
 ### 4.1 当前阶段目标
 
 - `docs/` 统一说明文档
-- 模块化代码架构稳定
+- 模块化代码架构稳定（core/services/ui/utils 四层架构）
 - 输入验证与日志系统全覆盖
-- AI 与数据库的核心流程稳定运行
+- AI 分段处理与进度显示
+- EPUB 导入与内容获取稳定运行
 
 ### 4.2 下阶段优先级
 
-1. **UI/UX 改进**
-   - 优化布局与交互反馈
-   - 增加进度提示和错误弹窗
-
-2. **测试体系**
+1. **测试体系**
    - 添加单元测试与集成测试
    - 建立 `pytest` 测试目录
 
-3. **依赖管理**
+2. **依赖管理**
    - 生成 `requirements.txt`
    - 固定核心库版本
 
-4. **打包和部署**
+3. **打包和部署**
    - 维护 `ReadEcho_Pro.spec`
    - 优化 `update_exe.bat`
 
-5. **性能监控**
+4. **性能监控**
    - 加入日志性能统计
    - 建立 AI 处理耗时分析
+
+5. **功能扩展**
+   - 章节总结功能（通过"+"菜单）
+   - 笔记导出功能
 
 ### 4.3 2026-04-21优化工作完成
 

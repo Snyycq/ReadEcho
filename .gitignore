@@ -25,7 +25,8 @@ venv/
 venv_ai/
 ENV/
 env/
-.venv
+.venv/
+.mypy_cache/
 
 # IDE
 .vscode/
@@ -41,6 +42,7 @@ Thumbs.db
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 .tox/
 .coverage.*
@@ -69,6 +71,7 @@ data/
 # Temporary files
 *.tmp
 *.temp
+*.wav
 temp/
 temp_note.wav
 

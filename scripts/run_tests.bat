@@ -7,6 +7,9 @@ echo   ReadEcho Pro - 智能测试运行器
 echo ========================================
 echo.
 
+:: 切换到项目根目录（脚本在 scripts/ 子目录中）
+cd /d "%~dp0.."
+
 # 函数：检测当前是否在虚拟环境中
 set PYTHON_DETECT_CMD=python -c "import sys; exit(0 if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix) else 1)"
 %PYTHON_DETECT_CMD% >nul 2>&1

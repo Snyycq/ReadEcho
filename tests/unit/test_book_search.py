@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch, MagicMock
 
 import pytest
 
-from book_search import (
+from services.book_search import (
     BookSearchResult,
     SearchSource,
     OpenLibrarySource,
@@ -64,7 +64,7 @@ class TestOpenLibrarySource:
         source = OpenLibrarySource()
         assert source.is_available() is True
 
-    @patch('book_search.requests.get')
+    @patch('services.book_search.requests.get')
     def test_search_success(self, mock_get):
         """测试成功搜索"""
         mock_response = Mock()
@@ -91,7 +91,7 @@ class TestOpenLibrarySource:
         assert results[0].author == "Author One, Author Two"
         assert results[0].source == "openlibrary"
 
-    @patch('book_search.requests.get')
+    @patch('services.book_search.requests.get')
     def test_search_with_retry_on_timeout(self, mock_get):
         """测试超时重试机制"""
         import requests
@@ -111,7 +111,7 @@ class TestOpenLibrarySource:
         assert mock_get.call_count >= 2
         assert results == []
 
-    @patch('book_search.requests.get')
+    @patch('services.book_search.requests.get')
     def test_search_empty_results(self, mock_get):
         """测试空结果"""
         mock_response = Mock()
@@ -124,7 +124,7 @@ class TestOpenLibrarySource:
 
         assert results == []
 
-    @patch('book_search.requests.get')
+    @patch('services.book_search.requests.get')
     def test_search_missing_fields(self, mock_get):
         """测试缺失字段的情况"""
         mock_response = Mock()
@@ -149,17 +149,17 @@ class TestDoubanSource:
 
     def test_is_available_no_key(self):
         """测试无API密钥时不可用"""
-        with patch('book_search.DOUBAN_API_KEY', ''):
+        with patch('services.book_search.DOUBAN_API_KEY', ''):
             source = DoubanSource()
             assert source.is_available() is False
 
     def test_is_available_with_key(self):
         """测试有API密钥时可用"""
-        with patch('book_search.DOUBAN_API_KEY', 'test_key'):
+        with patch('services.book_search.DOUBAN_API_KEY', 'test_key'):
             source = DoubanSource()
             assert source.is_available() is True
 
-    @patch('book_search.DOUBAN_API_KEY', '')
+    @patch('services.book_search.DOUBAN_API_KEY', '')
     def test_search_no_key(self):
         """测试无密钥时搜索返回空"""
         source = DoubanSource()
@@ -172,13 +172,13 @@ class TestGoogleBooksSource:
 
     def test_is_available_no_key(self):
         """测试无API密钥时不可用"""
-        with patch('book_search.GOOGLE_BOOKS_API_KEY', ''):
+        with patch('services.book_search.GOOGLE_BOOKS_API_KEY', ''):
             source = GoogleBooksSource()
             assert source.is_available() is False
 
     def test_is_available_with_key(self):
         """测试有API密钥时可用"""
-        with patch('book_search.GOOGLE_BOOKS_API_KEY', 'test_key'):
+        with patch('services.book_search.GOOGLE_BOOKS_API_KEY', 'test_key'):
             source = GoogleBooksSource()
             assert source.is_available() is True
 
@@ -322,7 +322,7 @@ class TestSearchCache:
 
     def test_cache_disabled(self, temp_db):
         """测试缓存禁用"""
-        with patch('book_search.SEARCH_CACHE_ENABLED', False):
+        with patch('services.book_search.SEARCH_CACHE_ENABLED', False):
             cache = SearchCache(temp_db)
             results = [{"title": "Book"}]
 
@@ -379,7 +379,7 @@ class TestBookSearchService:
         results = service.search(123)
         assert results == []
 
-    @patch('book_search.requests.get')
+    @patch('services.book_search.requests.get')
     def test_search_with_results(self, mock_get, temp_db):
         """测试有结果的搜索"""
         mock_response = Mock()
@@ -648,7 +648,7 @@ class TestBookSearchService:
     def test_search_with_disabled_web_search(self, temp_db):
         """测试禁用网络搜索"""
         # 模拟网络搜索禁用
-        with patch('book_search.WEB_SEARCH_ENABLED', False):
+        with patch('services.book_search.WEB_SEARCH_ENABLED', False):
             service = BookSearchService(temp_db)
             results = service.search("test book")
             assert len(results) >= 0  # 应该至少返回其他数据源的结果
@@ -681,7 +681,7 @@ class TestGetSearchService:
 
     def test_singleton(self, temp_db):
         """测试单例模式"""
-        import book_search
+        from services import book_search
         book_search._search_service_instance = None  # 重置单例
 
         service1 = get_search_service(temp_db)
@@ -691,7 +691,7 @@ class TestGetSearchService:
 
     def test_singleton_with_web_search(self, temp_db):
         """测试带网络搜索函数的单例"""
-        import book_search
+        from services import book_search
         book_search._search_service_instance = None
 
         service1 = get_search_service(temp_db)
@@ -702,5 +702,5 @@ class TestGetSearchService:
 
     def teardown_method(self):
         """每个测试后重置单例"""
-        import book_search
+        from services import book_search
         book_search._search_service_instance = None

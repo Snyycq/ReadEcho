@@ -5,7 +5,7 @@ ReadEcho Pro 数据库管理模块
 
 import sqlite3
 from config import LOGGER
-from validators import InputValidator
+from utils.validators import InputValidator
 
 
 class DBManager:
@@ -48,7 +48,12 @@ class DBManager:
                     id INTEGER PRIMARY KEY,
                     title TEXT,
                     author TEXT,
-                    added_date DATETIME DEFAULT CURRENT_TIMESTAMP
+                    added_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    file_path TEXT,
+                    description TEXT,
+                    cover_path TEXT,
+                    toc_json TEXT,
+                    book_type TEXT DEFAULT 'manual'
                 )
             """)
 
@@ -85,9 +90,29 @@ class DBManager:
 
             self.conn.commit()
             LOGGER.debug("数据库表创建成功")
+
+            # 迁移：为已有数据库添加新字段
+            self._migrate_books_table()
         except sqlite3.Error as e:
             LOGGER.error(f"创建数据库表失败: {e}")
             raise
+
+    def _migrate_books_table(self):
+        """为 books 表添加新字段（如果不存在）"""
+        new_columns = [
+            ("file_path", "TEXT"),
+            ("description", "TEXT"),
+            ("cover_path", "TEXT"),
+            ("toc_json", "TEXT"),
+            ("book_type", "TEXT DEFAULT 'manual'"),
+        ]
+        for col_name, col_type in new_columns:
+            try:
+                self.cursor.execute(f"ALTER TABLE books ADD COLUMN {col_name} {col_type}")
+                LOGGER.debug(f"添加字段: books.{col_name}")
+            except sqlite3.OperationalError:
+                pass  # 字段已存在
+        self.conn.commit()
 
     def add_note(self, title, content, note_type="Summary"):
         """添加笔记（总结或语音笔记）"""
@@ -109,12 +134,18 @@ class DBManager:
 
     # 书籍相关方法
 
-    def add_book(self, title, author=""):
+    def add_book(self, title, author="", book_type="manual", file_path=None,
+                 description=None, cover_path=None, toc_json=None):
         """添加新书籍到书架
 
         Args:
             title: 书籍标题
             author: 作者名称（可选）
+            book_type: 书籍类型（manual 或 epub）
+            file_path: EPUB 文件路径（可选）
+            description: 书籍简介（可选）
+            cover_path: 封面图片路径（可选）
+            toc_json: 目录 JSON（可选）
 
         Returns:
             新添加书籍的ID
@@ -127,13 +158,77 @@ class DBManager:
             title = InputValidator.validate_book_title(title)
             author = InputValidator.validate_author_name(author)
 
-            self.cursor.execute("INSERT INTO books (title, author) VALUES (?, ?)", (title, author))
+            self.cursor.execute(
+                """INSERT INTO books (title, author, book_type, file_path, description, cover_path, toc_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (title, author, book_type, file_path, description, cover_path, toc_json)
+            )
             self.conn.commit()
             book_id = self.cursor.lastrowid
-            LOGGER.info(f"添加书籍成功: {title} (ID: {book_id})")
+            LOGGER.info(f"添加书籍成功: {title} (ID: {book_id}, 类型: {book_type})")
             return book_id
         except (ValueError, sqlite3.Error) as e:
             LOGGER.error(f"添加书籍失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def get_book_by_id(self, book_id):
+        """根据ID获取书籍详细信息
+
+        Args:
+            book_id: 书籍ID
+
+        Returns:
+            书籍信息字典，不存在则返回None
+        """
+        try:
+            if not isinstance(book_id, int) or book_id <= 0:
+                return None
+
+            self.cursor.execute(
+                """SELECT id, title, author, added_date, file_path, description,
+                          cover_path, toc_json, book_type
+                   FROM books WHERE id = ?""",
+                (book_id,)
+            )
+            row = self.cursor.fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "title": row[1],
+                    "author": row[2],
+                    "added_date": row[3],
+                    "file_path": row[4],
+                    "description": row[5],
+                    "cover_path": row[6],
+                    "toc_json": row[7],
+                    "book_type": row[8],
+                }
+            return None
+        except sqlite3.Error as e:
+            LOGGER.error(f"获取书籍详情失败: {e}")
+            return None
+
+    def update_book(self, book_id, **kwargs):
+        """更新书籍信息
+
+        Args:
+            book_id: 书籍ID
+            **kwargs: 要更新的字段和值
+        """
+        allowed_fields = {"title", "author", "description", "cover_path", "toc_json", "file_path"}
+        updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
+        if not updates:
+            return
+
+        try:
+            set_clause = ", ".join(f"{k} = ?" for k in updates)
+            values = list(updates.values()) + [book_id]
+            self.cursor.execute(f"UPDATE books SET {set_clause} WHERE id = ?", values)
+            self.conn.commit()
+            LOGGER.info(f"更新书籍成功: ID={book_id}")
+        except sqlite3.Error as e:
+            LOGGER.error(f"更新书籍失败: {e}")
             self.conn.rollback()
             raise
 

@@ -4,8 +4,8 @@ echo ReadEcho Pro EXE Auto Update Tool
 echo ========================================
 echo.
 
-:: 切换到脚本所在目录
-cd /d "%~dp0"
+:: 切换到项目根目录（脚本在 scripts/ 子目录中）
+cd /d "%~dp0.."
 
 :: 检查虚拟环境是否存在
 if not exist "venv_ai\Scripts\activate.bat" (
@@ -48,7 +48,7 @@ if errorlevel 1 (
 
 echo.
 echo [3/4] Building new EXE with PyInstaller...
-venv_ai\Scripts\pyinstaller --onedir --windowed main.py --name ReadEcho_Pro --hidden-import database_manager --hidden-import ai_processor --hidden-import recording_manager --hidden-import app_services --hidden-import ui_builder --hidden-import event_handler --hidden-import config --hidden-import utils
+venv_ai\Scripts\pyinstaller --onedir --windowed main.py --name ReadEcho_Pro --hidden-import core.database_manager --hidden-import services.ai_processor --hidden-import services.recording_manager --hidden-import services.app_services --hidden-import ui.ui_builder --hidden-import ui.event_handler --hidden-import config --hidden-import utils.helpers
 if errorlevel 1 (
     echo ERROR: PyInstaller failed!
     pause
@@ -57,12 +57,12 @@ if errorlevel 1 (
 
 echo.
 echo [4/4] Creating launcher batch file...
-if exist "ReadEcho_Pro_Exe.bat" del "ReadEcho_Pro_Exe.bat"
-echo @echo off > ReadEcho_Pro_Exe.bat
-echo :: ReadEcho Pro Launcher >> ReadEcho_Pro_Exe.bat
-echo cd /d "%%~dp0" >> ReadEcho_Pro_Exe.bat
-echo start dist\ReadEcho_Pro\ReadEcho_Pro.exe >> ReadEcho_Pro_Exe.bat
-echo exit >> ReadEcho_Pro_Exe.bat
+if exist "scripts\ReadEcho_Pro_Exe.bat" del "scripts\ReadEcho_Pro_Exe.bat"
+echo @echo off > scripts\ReadEcho_Pro_Exe.bat
+echo :: ReadEcho Pro Launcher >> scripts\ReadEcho_Pro_Exe.bat
+echo cd /d "%%~dp0.." >> scripts\ReadEcho_Pro_Exe.bat
+echo start dist\ReadEcho_Pro\ReadEcho_Pro.exe >> scripts\ReadEcho_Pro_Exe.bat
+echo exit >> scripts\ReadEcho_Pro_Exe.bat
 
 echo.
 echo ========================================
@@ -70,7 +70,7 @@ echo SUCCESS: EXE updated successfully!
 echo ========================================
 echo.
 echo The new EXE is located in: dist\ReadEcho_Pro\
-echo You can run it using: ReadEcho_Pro_Exe.bat
+echo You can run it using: scripts\ReadEcho_Pro_Exe.bat
 echo.
 echo Press any key to exit...
 pause >nul

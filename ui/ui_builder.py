@@ -19,9 +19,10 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QGroupBox,
     QSplitter,
+    QComboBox,
 )
 from PyQt6.QtCore import Qt
-from config import WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_X, WINDOW_Y
+from config import WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_X, WINDOW_Y, get_selected_model
 
 
 def create_main_window(widget):
@@ -53,10 +54,17 @@ def create_left_panel(widget):
     widget.book_list = QListWidget()
     left_layout.addWidget(widget.book_list, 1)
 
-    # 添加书籍按钮
+    # 添加书籍按钮行
+    book_btn_layout = QHBoxLayout()
     widget.add_book_btn = QPushButton("➕ 添加书籍")
     widget.add_book_btn.setFixedHeight(32)
-    left_layout.addWidget(widget.add_book_btn)
+    book_btn_layout.addWidget(widget.add_book_btn)
+
+    widget.import_epub_btn = QPushButton("📖 导入EPUB")
+    widget.import_epub_btn.setFixedHeight(32)
+    widget.import_epub_btn.setToolTip("导入EPUB电子书")
+    book_btn_layout.addWidget(widget.import_epub_btn)
+    left_layout.addLayout(book_btn_layout)
 
     # 下半部分：笔记本（选中书籍的笔记列表）
     left_layout.addWidget(QLabel("📝 笔记本"))
@@ -70,7 +78,7 @@ def create_left_panel(widget):
 
 def create_center_panel(widget):
     """
-    创建中间面板（选中笔记详情 + 输入笔记）
+    创建中间面板（笔记详情 + 添加笔记）
 
     Args:
         widget: ReadEchoPro实例
@@ -82,13 +90,11 @@ def create_center_panel(widget):
     center_layout = QVBoxLayout()
 
     # 书名显示
-    title_layout = QHBoxLayout()
     widget.title_display = QLineEdit()
     widget.title_display.setReadOnly(True)
     widget.title_display.setPlaceholderText("请从书架选择书籍")
     widget.title_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    title_layout.addWidget(widget.title_display)
-    center_layout.addLayout(title_layout)
+    center_layout.addWidget(widget.title_display)
 
     # 笔记详情显示区域
     note_group = QGroupBox("📝 笔记详情")
@@ -144,6 +150,24 @@ def create_right_panel(widget):
     right_widget = QWidget()
     right_layout = QVBoxLayout()
 
+    # 模型选择器
+    model_layout = QHBoxLayout()
+    model_layout.addWidget(QLabel("模型:"))
+    widget.model_selector = QComboBox()
+    widget.model_selector.addItems([
+        "deepseek-v4-pro",
+        "deepseek-v4-flash",
+        "qwen2.5:7b"
+    ])
+    widget.model_selector.setToolTip("选择AI模型")
+    # 加载上次选择的模型
+    saved_model = get_selected_model()
+    index = widget.model_selector.findText(saved_model)
+    if index >= 0:
+        widget.model_selector.setCurrentIndex(index)
+    model_layout.addWidget(widget.model_selector)
+    right_layout.addLayout(model_layout)
+
     # AI对话显示区域
     chat_group = QGroupBox("🤖 AI助手")
     chat_group_layout = QVBoxLayout()
@@ -157,8 +181,12 @@ def create_right_panel(widget):
     ask_group = QGroupBox("💬 向AI提问")
     ask_layout = QVBoxLayout()
 
-    # 手动输入问题（输入框 + 语音按钮 + 提问按钮）
+    # 手动输入问题（+按钮 + 输入框 + 语音按钮 + 提问按钮）
     question_input_layout = QHBoxLayout()
+    widget.add_ai_menu_btn = QPushButton("+")
+    widget.add_ai_menu_btn.setFixedSize(36, 36)
+    widget.add_ai_menu_btn.setToolTip("AI功能菜单")
+    question_input_layout.addWidget(widget.add_ai_menu_btn)
     widget.ai_question_input = QLineEdit()
     widget.ai_question_input.setPlaceholderText("输入问题...")
     question_input_layout.addWidget(widget.ai_question_input)

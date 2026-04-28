@@ -4,10 +4,10 @@ ReadEcho Pro 应用服务模块
 """
 
 from config import SAMPLE_RATE, TEMP_AUDIO_FILE, LOGGER
-from database_manager import DBManager
-from ai_processor import AIService
-from recording_manager import RecordingService
-import book_search
+from core.database_manager import DBManager
+from services.ai_processor import AIService
+from services.recording_manager import RecordingService
+from services import book_search
 
 
 class AppServices:
@@ -53,6 +53,145 @@ class AppServices:
         except Exception as e:
             LOGGER.error(f"添加书籍失败: {e}")
             raise
+
+    def import_epub(self, file_path: str) -> int:
+        """导入 EPUB 书籍
+
+        Args:
+            file_path: EPUB 文件路径
+
+        Returns:
+            新书籍的ID
+        """
+        try:
+            from core.epub_reader import EpubReader
+            import json
+
+            reader = EpubReader(file_path)
+            reader.load()
+
+            metadata = reader.get_metadata()
+            toc = reader.get_toc()
+
+            title = metadata.get("title", "未知标题")
+            author = metadata.get("author", "")
+            description = metadata.get("description", "")
+            toc_json = json.dumps(toc, ensure_ascii=False) if toc else None
+
+            book_id = self.db.add_book(
+                title=title,
+                author=author,
+                book_type="epub",
+                file_path=file_path,
+                description=description,
+                toc_json=toc_json,
+            )
+
+            self.current_book_id = book_id
+            self.current_book_title = title
+            LOGGER.info(f"EPUB导入成功: {title} (ID: {book_id})")
+            return book_id
+        except Exception as e:
+            LOGGER.error(f"EPUB导入失败: {e}")
+            raise
+
+    def get_book_detail(self, book_id: int):
+        """获取书籍详细信息
+
+        Args:
+            book_id: 书籍ID
+
+        Returns:
+            书籍信息字典
+        """
+        try:
+            return self.db.get_book_by_id(book_id)
+        except Exception as e:
+            LOGGER.error(f"获取书籍详情失败: {e}")
+            return None
+
+    def get_book_toc(self, book_id: int) -> list:
+        """获取书籍目录
+
+        Args:
+            book_id: 书籍ID
+
+        Returns:
+            目录列表
+        """
+        try:
+            import json
+            book = self.db.get_book_by_id(book_id)
+            if book and book.get("toc_json"):
+                return json.loads(book["toc_json"])
+            return []
+        except Exception as e:
+            LOGGER.error(f"获取书籍目录失败: {e}")
+            return []
+
+    def get_chapter_content(self, book_id: int, chapter_href: str) -> str:
+        """获取章节内容
+
+        Args:
+            book_id: 书籍ID
+            chapter_href: 章节路径
+
+        Returns:
+            章节纯文本内容
+        """
+        try:
+            from core.epub_reader import EpubReader
+
+            book = self.db.get_book_by_id(book_id)
+            if not book or not book.get("file_path"):
+                return ""
+
+            reader = EpubReader(book["file_path"])
+            reader.load()
+            return reader.get_chapter_content(chapter_href)
+        except Exception as e:
+            LOGGER.error(f"获取章节内容失败: {e}")
+            return ""
+
+    def get_book_full_text(self, book_id: int) -> str:
+        """获取书籍全文（用于 AI 总结）
+
+        Args:
+            book_id: 书籍ID
+
+        Returns:
+            全书纯文本
+        """
+        try:
+            import os
+            from core.epub_reader import EpubReader
+
+            book = self.db.get_book_by_id(book_id)
+            if not book:
+                LOGGER.error(f"[DEBUG] 书籍不存在: book_id={book_id}")
+                return ""
+
+            file_path = book.get("file_path")
+            LOGGER.debug(f"[DEBUG] 书籍文件路径: {file_path}")
+
+            if not file_path:
+                LOGGER.error(f"[DEBUG] 书籍没有文件路径: book_id={book_id}")
+                return ""
+
+            if not os.path.exists(file_path):
+                LOGGER.error(f"[DEBUG] EPUB 文件不存在: {file_path}")
+                return ""
+
+            LOGGER.debug(f"[DEBUG] EPUB 文件大小: {os.path.getsize(file_path)} bytes")
+
+            reader = EpubReader(file_path)
+            reader.load()
+            full_text = reader.get_full_text()
+            LOGGER.debug(f"[DEBUG] 获取全文长度: {len(full_text)} 字符")
+            return full_text
+        except Exception as e:
+            LOGGER.error(f"[DEBUG] 获取书籍全文失败: {e}", exc_info=True)
+            return ""
 
     def get_books(self, search_query: str = "", limit: int = 50, offset: int = 0):
         """获取书籍列表"""
@@ -209,9 +348,9 @@ class AppServices:
         """创建音频转录线程"""
         return self.ai_service.create_transcription_thread(audio_path, book_title, callback)
 
-    def create_qa_thread(self, question, book_title, callback):
+    def create_qa_thread(self, question, book_title, callback, model=None):
         """创建问答线程"""
-        return self.ai_service.create_qa_thread(question, book_title, callback)
+        return self.ai_service.create_qa_thread(question, book_title, callback, model)
 
     def set_stt_model(self, model):
         """设置Whisper模型"""

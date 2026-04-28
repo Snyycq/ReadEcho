@@ -183,8 +183,80 @@ LOGGER.info(f"数据库文件: {DATABASE_FILE}")
 LOGGER.info(f"临时音频文件: {TEMP_AUDIO_FILE}")
 
 # --- 样式表 ---
-# 统一暗色主题样式
-STYLESHEET = """
+# 米黄色温暖主题样式（默认）
+WARM_STYLESHEET = """
+    QWidget {
+        background-color: #F5F0E8;
+        color: #3D3229;
+        font-family: 'Segoe UI';
+    }
+    QTextEdit {
+        background-color: #FFFBF5;
+        border: 1px solid #D4C5A9;
+        border-radius: 5px;
+        padding: 10px;
+        color: #3D3229;
+    }
+    QLineEdit {
+        background-color: #FFFBF5;
+        border: 1px solid #D4C5A9;
+        padding: 5px;
+        border-radius: 3px;
+        color: #3D3229;
+    }
+    QPushButton {
+        background-color: #C9A96E;
+        border-radius: 5px;
+        padding: 8px;
+        font-weight: bold;
+        color: #FFFFFF;
+    }
+    QPushButton:hover {
+        background-color: #B8944D;
+    }
+    QPushButton:disabled {
+        background-color: #D4C5A9;
+        color: #8B7D6B;
+    }
+    QPushButton.danger {
+        background-color: #C75050;
+        color: #ffffff;
+    }
+    QPushButton.danger:hover {
+        background-color: #A84040;
+    }
+    QListWidget {
+        background-color: #FFFBF5;
+        border: 1px solid #D4C5A9;
+        border-radius: 5px;
+        color: #3D3229;
+    }
+    QListWidget::item:selected {
+        background-color: #E8DCC8;
+        color: #3D3229;
+    }
+    QListWidget::item:hover {
+        background-color: #F0E8D8;
+    }
+    QGroupBox {
+        font-weight: bold;
+        border: 2px solid #D4C5A9;
+        border-radius: 5px;
+        margin-top: 10px;
+        color: #5C4A32;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 5px 0 5px;
+    }
+    QSplitter::handle {
+        background-color: #D4C5A9;
+    }
+"""
+
+# 暗色主题样式（可选）
+DARK_STYLESHEET = """
     QWidget {
         background-color: #2b2b2b;
         color: #ffffff;
@@ -247,18 +319,59 @@ STYLESHEET = """
         left: 10px;
         padding: 0 5px 0 5px;
     }
+    QSplitter::handle {
+        background-color: #555555;
+    }
 """
+
+# 默认使用米黄色主题
+STYLESHEET = WARM_STYLESHEET
 
 # --- AI 配置 ---
 # 从环境变量读取，回退到默认值
 WHISPER_MODEL = get_env_var(
     "WHISPER_MODEL", "tiny"
 )  # Whisper模型大小 (tiny, base, small, medium, large)
-OLLAMA_MODEL = get_env_var("OLLAMA_MODEL", "qwen2.5:7b")  # Ollama模型名称
+
+# AI 提供商选择：ollama 或 deepseek
+AI_PROVIDER = get_env_var("AI_PROVIDER", "deepseek")
+
+# DeepSeek 配置（首选）
+DEEPSEEK_API_KEY = get_env_var("DEEPSEEK_API_KEY", "your_api_key_here")
+DEEPSEEK_BASE_URL = get_env_var("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+DEEPSEEK_MODEL = get_env_var("DEEPSEEK_MODEL", "deepseek-v4-pro")
+
+# Ollama 配置（备用）
+OLLAMA_MODEL = get_env_var("OLLAMA_MODEL", "qwen2.5:7b")
+OLLAMA_BASE_URL = get_env_var("OLLAMA_BASE_URL", "http://localhost:11434")
+
+# --- 模型选择持久化 ---
+_MODEL_CONFIG_FILE = Path.home() / ".readecho" / "model_config.txt"
+
+def get_selected_model() -> str:
+    """获取上次选择的模型"""
+    try:
+        if _MODEL_CONFIG_FILE.exists():
+            return _MODEL_CONFIG_FILE.read_text().strip()
+    except Exception:
+        pass
+    return DEEPSEEK_MODEL
+
+def save_selected_model(model: str) -> None:
+    """保存选择的模型"""
+    try:
+        _MODEL_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _MODEL_CONFIG_FILE.write_text(model)
+    except Exception as e:
+        LOGGER.warning(f"保存模型配置失败: {e}")
 
 # 记录AI配置
 LOGGER.info(f"Whisper模型: {WHISPER_MODEL}")
-LOGGER.info(f"Ollama模型: {OLLAMA_MODEL}")
+LOGGER.info(f"AI提供商: {AI_PROVIDER}")
+if AI_PROVIDER == "deepseek":
+    LOGGER.info(f"DeepSeek模型: {DEEPSEEK_MODEL}")
+else:
+    LOGGER.info(f"Ollama模型: {OLLAMA_MODEL}")
 
 # --- 在线搜索配置 ---
 # 从环境变量读取，回退到默认值

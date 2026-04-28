@@ -1,17 +1,27 @@
 # ReadEcho Pro
 
-本仓库的文档已统一整理到 `docs/` 目录中：
+智能阅读助手 - 基于 PyQt6 的 EPUB 电子书阅读与 AI 笔记工具
 
-## 核心文档
-- `docs/README.md` - 项目说明与使用指南
-- `docs/CHANGELOG.md` - 版本更新日志
-- `docs/DEVELOPMENT.md` - 开发者文档
+## 功能
 
-## 详细指南
-- `docs/guides/development_guide.md` - 完整开发指南
+- EPUB 电子书导入和阅读
+- AI 书籍总结、思维导图（分段处理，支持大文件）
+- 多模型支持（DeepSeek / Ollama）
+- 语音转文字（Whisper）
+- 书架管理和笔记编辑
 
-## 分析报告
-- `docs/reports/` - 代码质量、测试覆盖率和优化总结报告
+## 快速开始
 
-## 使用方式
-请打开 `docs/README.md` 了解项目概述、运行步骤和核心功能。
+```bash
+# 双击启动（推荐）
+start.bat
+
+# 使用虚拟环境启动（需要语音功能时）
+start.bat --venv
+```
+
+## 文档
+
+- [项目说明](docs/README.md)
+- [更新日志](docs/CHANGELOG.md)
+- [开发者文档](docs/DEVELOPMENT.md)

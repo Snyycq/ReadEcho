@@ -1,6 +1,82 @@
 # ReadEcho Pro 版本与更新日志
 
-## 📅 每日更新日志
+## 每日更新日志
+
+### 2026-04-28 【代码重构与Windows兼容性修复】
+
+- **代码重构**：模块化重组，代码按职责拆分到 `core/`、`services/`、`ui/`、`utils/` 包
+  - `model_cache.py` → `core/model_cache.py`
+  - `database_manager.py` → `core/database_manager.py`
+  - `ai_processor.py` → `services/ai_processor.py`
+  - `recording_manager.py` → `services/recording_manager.py`
+  - `app_services.py` → `services/app_services.py`
+  - `book_search.py` → `services/book_search.py`
+  - `event_handler.py` → `ui/event_handler.py`
+  - `ui_builder.py` → `ui/ui_builder.py`
+  - `validators.py` → `utils/validators.py`
+- **Bug修复**：修复 Windows 环境下 tqdm 导致的 `[Errno 22] Invalid argument` 崩溃
+  - 同时替换 `sys.stdout` 和 `sys.stderr` 为安全流，解决 tqdm `status_printer` 访问无效 stdout 句柄的问题
+  - 应用于 `services/ai_processor.py`（Whisper转录）和 `core/model_cache.py`（模型加载）
+- **AI处理优化**：
+  - 分段文本增大到 8000 字符/段，减少处理轮次
+  - 使用 ThreadPoolExecutor 并发处理多段文本
+  - 书籍总结采用「总-分-总」结构，内容更详细
+  - 单一进度条原地更新，不再重复追加
+- **录音优化**：改用 `sounddevice.InputStream` 非阻塞回调录音，避免 UI 卡死
+- **清理**：删除 Dockerfile、docker-compose.yml、旧 bat 脚本、冗余文档和测试状态文件
+
+---
+
+### 2026-04-26 【UI重构与分段AI处理】
+
+- **Bug修复**：修复模块导入路径错误（`epub_reader` → `core.epub_reader`，`ai_processor` → `services.ai_processor`）
+- **Bug修复**：修复 EPUB 章节内容获取失败（fragment identifier 处理）
+- **Bug修复**：修复 AI 聊天区文字颜色在暖色主题下不可见
+- **Bug修复**：修复 `_generate_summary()` 丢弃 EPUB 全文内容的严重 Bug
+- **UI重构**：
+  - 中间面板简化为纯笔记详情（移除书籍简介框和三个AI按钮）
+  - AI 功能整合到右侧提问区的"+"菜单（书籍总结、思维导图）
+  - 删除章节总结功能
+- **分段AI处理**：新增 `ChunkedAIThread`，大文件自动分段（每段4000字符），逐段总结后合并
+- **进度显示**：AI 处理过程中实时显示进度（第 1/3 段...）
+- **思维导图优化**：改为树状图格式（Unicode 树状符号），基于全文内容生成
+- **依赖安装**：安装缺失的 `openai` 包
+
+**功能变更**：
+1. ✅ EPUB 导入修复：模块路径和章节内容获取均已修复
+2. ✅ AI 功能整合：书籍总结和思维导图移至"+"菜单
+3. ✅ 分段处理：大书自动分段，带进度显示
+4. ✅ UI 简化：中间面板专注于笔记功能
+
+---
+
+### 2026-04-25 【EPUB支持与AI功能增强】
+
+- **EPUB 电子书支持**：新增 `epub_reader.py` 模块，支持导入 EPUB 电子书，自动提取元数据、目录和内容
+- **DeepSeek API 集成**：接入 DeepSeek 作为首选 AI 提供商，支持 deepseek-v4-pro 和 deepseek-v4-flash 模型
+- **AI 功能扩展**：
+  - 书籍总结：自动生成全书摘要
+  - 章节总结：弹窗选择章节进行总结
+  - 思维导图：生成结构化思维导图（Markdown 格式）
+- **多模型切换**：右侧面板新增模型选择器，支持 deepseek-v4-pro、deepseek-v4-flash、qwen2.5:7b
+- **UI 重构**：
+  - 中间面板改为上下分割（书籍详情 + 笔记区）
+  - 左侧面板新增"导入EPUB"按钮
+  - AI 功能输出显示在书籍简介框
+- **米黄色温暖主题**：新增温暖的米黄色主题样式，默认启用
+- **虚拟环境可选**：默认使用系统 Python 启动，语音功能需要虚拟环境
+- **模型选择持久化**：模型选择保存到配置文件，重启后自动恢复
+- **数据库扩展**：books 表新增 file_path、description、toc_json、book_type 字段
+- **依赖更新**：添加 openai、ebooklib 依赖
+
+**功能新增成果**：
+1. ✅ EPUB 导入：支持电子书导入和阅读
+2. ✅ AI 总结：书籍总结、章节总结、思维导图
+3. ✅ 多模型：支持 DeepSeek 和 Ollama 模型切换
+4. ✅ 温暖主题：米黄色界面，阅读更舒适
+5. ✅ 灵活启动：支持系统 Python 和虚拟环境两种模式
+
+---
 
 ### 2026-04-24 【UI/UX 优化与交互增强】
 
@@ -126,6 +202,26 @@
 
 ## 🧭 版本历史
 
+### v1.4.0 - 2026-04-28
+
+**本版本亮点：**
+- 代码模块化重构：按职责拆分到 core/services/ui/utils 包
+- 修复 Windows 下 tqdm 导致的录音和模型加载崩溃
+- AI 分段处理优化：更大段落、并发处理、总-分-总结构总结
+- 录音改为非阻塞回调模式，UI 不再卡死
+
+---
+
+### v1.3.0 - 2026-04-26
+
+**本版本亮点：**
+- UI 重构：中间面板简化，AI 功能整合到"+"菜单
+- 分段 AI 处理：大文件自动分段总结，带进度显示
+- 多个 Bug 修复：模块导入路径、EPUB 章节获取、AI 内容丢失
+- 思维导图优化：树状图格式，基于全文内容
+
+---
+
 ### v1.1.0 - 2026-04-16
 
 **本版本亮点：**
@@ -177,6 +273,8 @@
 
 | 日期 | 改进类型 | 说明 |
 |------|----------|------|
+| 2026-04-28 | 重构+Bug修复 | 代码模块化重组；修复tqdm Windows崩溃；AI并发处理与总-分-总总结；非阻塞录音 |
+| 2026-04-26 | Bug修复+UI重构 | 修复模块导入路径、EPUB章节获取、AI内容丢失；UI简化，分段AI处理 |
 | 2026-04-24 | Bug修复+UI | 修复书籍编辑LOGGER缺失、三栏布局可拖拽调整宽度 |
 | 2026-04-21 | 工程化建设 | 配置管理优化、测试覆盖分析、代码质量扫描、CI/CD、容器化、文档重组 |
 | 2026-04-17 | UI/UX优化 | 主题适配、Terminal组件、危险按钮样式统一 |
