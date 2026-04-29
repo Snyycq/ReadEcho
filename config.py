@@ -337,7 +337,7 @@ WHISPER_MODEL = get_env_var(
 AI_PROVIDER = get_env_var("AI_PROVIDER", "deepseek")
 
 # DeepSeek 配置（首选）
-DEEPSEEK_API_KEY = get_env_var("DEEPSEEK_API_KEY", "your_api_key_here")
+DEEPSEEK_API_KEY = get_env_var("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = get_env_var("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_MODEL = get_env_var("DEEPSEEK_MODEL", "deepseek-v4-pro")
 
@@ -370,6 +370,8 @@ LOGGER.info(f"Whisper模型: {WHISPER_MODEL}")
 LOGGER.info(f"AI提供商: {AI_PROVIDER}")
 if AI_PROVIDER == "deepseek":
     LOGGER.info(f"DeepSeek模型: {DEEPSEEK_MODEL}")
+    if not DEEPSEEK_API_KEY:
+        LOGGER.warning("DeepSeek API密钥未配置！请在 .env 文件中设置 DEEPSEEK_API_KEY")
 else:
     LOGGER.info(f"Ollama模型: {OLLAMA_MODEL}")
 
