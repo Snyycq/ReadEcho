@@ -2,6 +2,47 @@
 
 ## 每日更新日志
 
+### 2026-04-30 【安全修复、功能优化与CI修复】
+
+- **安全修复**：移除泄露的 DeepSeek API Key，清理 Git 历史记录
+  - 从 config.py 移除硬编码 API Key
+  - 使用 git filter-branch 重写历史
+  - 改用环境变量配置 API Key
+
+- **语音转录优化**：
+  - 新增 WHISPER_BEAM_SIZE 配置（默认5，提高准确度）
+  - 新增 WHISPER_LANGUAGE 配置（默认zh，跳过语言检测）
+  - 新增 WHISPER_CORRECTION_ENABLED 配置（可选AI纠正）
+
+- **AI总结/思维导图优化**：
+  - 新增书籍长度分类（短书<20k、中等20k-100k、长书>100k字符）
+  - 自适应分段参数（chunk大小、并发数、截断限制）
+  - 改进总结prompt：添加【核心主题】【关键要点】【亮点摘录】【适读人群】结构
+  - 改进思维导图prompt：3-5个主题，每主题2-4个关键点，每节点≤15字
+
+- **字体美化**：
+  - 字体从 Segoe UI 改为 Microsoft YaHei
+  - 添加 font-size 配置（QWidget 14px，QPushButton 13px）
+  - 内联HTML样式添加 font-family
+
+- **Bug修复**：
+  - 修复 Whisper 模型不加载问题（start.bat 优先使用 .venv）
+  - 修复模型选择对话框总是弹出（检测虚拟环境）
+  - 修复 Whisper 模型路径重复嵌套问题
+
+- **CI修复**：
+  - 创建 setup.py 支持 pip editable install
+  - 创建 .flake8 配置文件
+  - 更新 CI 使用 setup-python@v5
+  - 修复 black 格式化问题（14个文件）
+  - 修复 flake8 错误（未使用导入、重复定义、行太长）
+
+- **清理**：
+  - 删除旧虚拟环境 venv_ai（释放5.1GB）
+  - 添加 Whisper 模型预下载脚本
+
+---
+
 ### 2026-04-28 【代码重构与Windows兼容性修复】
 
 - **代码重构**：模块化重组，代码按职责拆分到 `core/`、`services/`、`ui/`、`utils/` 包
@@ -202,6 +243,17 @@
 
 ## 🧭 版本历史
 
+### v1.5.0 - 2026-04-30
+
+**本版本亮点：**
+- 安全修复：移除泄露的 API Key，清理 Git 历史
+- 语音转录优化：beam_size=5、语言检测、可选AI纠正
+- AI 总结/思维导图：自适应分段、改进prompt结构
+- 字体美化：Microsoft YaHei，统一字号配置
+- CI 修复：支持 editable install，代码质量检查通过
+
+---
+
 ### v1.4.0 - 2026-04-28
 
 **本版本亮点：**
@@ -273,6 +325,7 @@
 
 | 日期 | 改进类型 | 说明 |
 |------|----------|------|
+| 2026-04-30 | 安全+优化+CI | 移除泄露API Key；语音转录/字体美化；AI自适应分段；CI修复 |
 | 2026-04-28 | 重构+Bug修复 | 代码模块化重组；修复tqdm Windows崩溃；AI并发处理与总-分-总总结；非阻塞录音 |
 | 2026-04-26 | Bug修复+UI重构 | 修复模块导入路径、EPUB章节获取、AI内容丢失；UI简化，分段AI处理 |
 | 2026-04-24 | Bug修复+UI | 修复书籍编辑LOGGER缺失、三栏布局可拖拽调整宽度 |
