@@ -9,7 +9,7 @@ import sounddevice as sd
 from scipy.io.wavfile import write
 from PyQt6.QtCore import QThread, pyqtSignal
 
-from config import SAMPLE_RATE, TEMP_AUDIO_FILE, RECORDING_DURATION, LOGGER
+from config import SAMPLE_RATE, TEMP_AUDIO_FILE, LOGGER
 
 
 class RecordingFinishThread(QThread):
@@ -91,10 +91,7 @@ class RecordingService:
                     self.recording_frames.append(indata.copy())
 
             self.audio_stream = sd.InputStream(
-                samplerate=self.fs,
-                channels=1,
-                dtype=np.float32,
-                callback=audio_callback
+                samplerate=self.fs, channels=1, dtype=np.float32, callback=audio_callback
             )
             self.audio_stream.start()
             LOGGER.debug("[DEBUG-录音服务] 音频流启动成功")
@@ -110,7 +107,7 @@ class RecordingService:
         self.is_recording = False
 
         # 停止音频流
-        if hasattr(self, 'audio_stream') and self.audio_stream:
+        if hasattr(self, "audio_stream") and self.audio_stream:
             self.audio_stream.stop()
             self.audio_stream.close()
             self.audio_stream = None
@@ -119,7 +116,9 @@ class RecordingService:
         # 合并录音帧
         if self.recording_frames:
             self.recording_data = np.concatenate(self.recording_frames, axis=0)
-            LOGGER.debug(f"[DEBUG-录音服务] 合并录音帧: {len(self.recording_frames)} 帧, 数据长度: {len(self.recording_data)}")
+            frames_count = len(self.recording_frames)
+            data_len = len(self.recording_data)
+            LOGGER.debug(f"[DEBUG-录音服务] 合并录音帧: {frames_count} 帧, 数据长度: {data_len}")
         else:
             self.recording_data = np.array([], dtype=np.float32)
             LOGGER.warning("[DEBUG-录音服务] 没有录音帧")
@@ -137,7 +136,7 @@ class RecordingService:
         """清理录音资源"""
         if self.is_recording:
             self.is_recording = False
-        if hasattr(self, 'audio_stream') and self.audio_stream:
+        if hasattr(self, "audio_stream") and self.audio_stream:
             try:
                 self.audio_stream.stop()
                 self.audio_stream.close()

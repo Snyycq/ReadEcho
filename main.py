@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QTextEdit,
     QLineEdit,
+    QComboBox,
 )
 from PyQt6.QtCore import Qt, QTimer
 

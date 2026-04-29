@@ -9,31 +9,22 @@ echo ==========================================
 echo       ReadEcho Pro - GPU Accelerated
 echo ==========================================
 
-:: 2. 检查是否需要使用虚拟环境（通过参数 --venv 或 -v）
-set USE_VENV=0
-if "%1"=="--venv" set USE_VENV=1
-if "%1"=="-v" set USE_VENV=1
-
-if %USE_VENV%==1 (
-    echo [INFO] 使用虚拟环境启动...
-    if not exist ".\venv_ai\Scripts\python.exe" (
-        color 0c
-        echo [ERROR] Cannot find 'venv_ai' folder!
-        pause
-        exit
-    )
-    echo [INFO] 启动应用（虚拟环境模式）...
+:: 2. 优先使用项目虚拟环境 .venv（已安装所有依赖）
+if exist ".\.venv\Scripts\python.exe" (
+    echo [INFO] 使用项目虚拟环境启动...
+    .\.venv\Scripts\python.exe main.py
+) else if exist ".\venv_ai\Scripts\python.exe" (
+    echo [INFO] 使用 venv_ai 虚拟环境启动...
     .\venv_ai\Scripts\python.exe main.py
 ) else (
     echo [INFO] 使用系统 Python 启动...
-    :: 优先使用系统 Python 3.12
     where python >nul 2>&1
     if %errorlevel%==0 (
         python main.py
     ) else (
         color 0c
-        echo [ERROR] Cannot find system Python!
-        echo Please install Python 3.12+ or use: start.bat --venv
+        echo [ERROR] Cannot find Python!
+        echo Please install Python 3.12+ or create virtual environment
         pause
         exit
     )

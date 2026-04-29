@@ -121,6 +121,7 @@ class AppServices:
         """
         try:
             import json
+
             book = self.db.get_book_by_id(book_id)
             if book and book.get("toc_json"):
                 return json.loads(book["toc_json"])
@@ -230,14 +231,16 @@ class AppServices:
             if len(online_results) < limit // 2:
                 local_books = self.db.get_books(query, limit - len(online_results))
                 for book_id, title, author in local_books:
-                    online_results.append({
-                        "source": "local",
-                        "book_id": book_id,
-                        "title": title,
-                        "author": author,
-                        "key": "",  # 本地书籍没有外部ID
-                        "metadata": {}
-                    })
+                    online_results.append(
+                        {
+                            "source": "local",
+                            "book_id": book_id,
+                            "title": title,
+                            "author": author,
+                            "key": "",  # 本地书籍没有外部ID
+                            "metadata": {},
+                        }
+                    )
 
             # 限制返回数量
             return online_results[:limit]
@@ -255,7 +258,7 @@ class AppServices:
                         "title": title,
                         "author": author,
                         "key": "",
-                        "metadata": {}
+                        "metadata": {},
                     }
                 )
             return results

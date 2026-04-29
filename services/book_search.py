@@ -27,6 +27,7 @@ from config import (
 @dataclass
 class BookSearchResult:
     """书籍搜索结果数据类"""
+
     source: str  # 数据源名称：openlibrary, douban, google_books, local
     title: str
     author: str
@@ -84,7 +85,7 @@ class OpenLibrarySource(SearchSource):
                     self.base_url,
                     params=params,
                     timeout=SEARCH_TIMEOUT,
-                    headers={"User-Agent": "ReadEcho Pro/1.0"}
+                    headers={"User-Agent": "ReadEcho Pro/1.0"},
                 )
                 response.raise_for_status()
                 return response.json()
@@ -128,17 +129,19 @@ class OpenLibrarySource(SearchSource):
                 authors = item.get("author_name") or []
                 author = ", ".join(authors) if authors else ""
 
-                results.append(BookSearchResult(
-                    source=self.name,
-                    title=title,
-                    author=author,
-                    external_id=key,
-                    metadata={
-                        "publish_year": item.get("first_publish_year"),
-                        "isbn": item.get("isbn", [])[:5],
-                        "language": item.get("language", []),
-                    }
-                ))
+                results.append(
+                    BookSearchResult(
+                        source=self.name,
+                        title=title,
+                        author=author,
+                        external_id=key,
+                        metadata={
+                            "publish_year": item.get("first_publish_year"),
+                            "isbn": item.get("isbn", [])[:5],
+                            "language": item.get("language", []),
+                        },
+                    )
+                )
 
         # 策略2: 如果标题搜索结果少，尝试通用搜索
         if len(results) < 5:
@@ -155,17 +158,19 @@ class OpenLibrarySource(SearchSource):
                     authors = item.get("author_name") or []
                     author = ", ".join(authors) if authors else ""
 
-                    results.append(BookSearchResult(
-                        source=self.name,
-                        title=title,
-                        author=author,
-                        external_id=key,
-                        metadata={
-                            "publish_year": item.get("first_publish_year"),
-                            "isbn": item.get("isbn", [])[:5],
-                            "language": item.get("language", []),
-                        }
-                    ))
+                    results.append(
+                        BookSearchResult(
+                            source=self.name,
+                            title=title,
+                            author=author,
+                            external_id=key,
+                            metadata={
+                                "publish_year": item.get("first_publish_year"),
+                                "isbn": item.get("isbn", [])[:5],
+                                "language": item.get("language", []),
+                            },
+                        )
+                    )
 
         LOGGER.debug(f"OpenLibrary搜索完成: {query} -> {len(results)} 结果")
         return results
@@ -195,15 +200,10 @@ class DoubanSource(SearchSource):
                 "apikey": DOUBAN_API_KEY,
             }
 
-            headers = {
-                "User-Agent": "ReadEcho Pro/1.0 (https://github.com/yourusername/readecho)"
-            }
+            headers = {"User-Agent": "ReadEcho Pro/1.0 (https://github.com/yourusername/readecho)"}
 
             response = requests.get(
-                self.base_url,
-                params=params,
-                headers=headers,
-                timeout=SEARCH_TIMEOUT
+                self.base_url, params=params, headers=headers, timeout=SEARCH_TIMEOUT
             )
             response.raise_for_status()
             data = response.json()
@@ -225,13 +225,15 @@ class DoubanSource(SearchSource):
                     "tags": item.get("tags", [])[:5],  # 最多5个标签
                 }
 
-                results.append(BookSearchResult(
-                    source=self.name,
-                    title=title,
-                    author=author,
-                    external_id=book_id,
-                    metadata=metadata
-                ))
+                results.append(
+                    BookSearchResult(
+                        source=self.name,
+                        title=title,
+                        author=author,
+                        external_id=book_id,
+                        metadata=metadata,
+                    )
+                )
 
             LOGGER.debug(f"豆瓣搜索完成: {query} -> {len(results)} 结果")
             return results
@@ -293,13 +295,15 @@ class GoogleBooksSource(SearchSource):
                     "language": volume_info.get("language"),
                 }
 
-                results.append(BookSearchResult(
-                    source=self.name,
-                    title=title,
-                    author=author,
-                    external_id=book_id,
-                    metadata=metadata
-                ))
+                results.append(
+                    BookSearchResult(
+                        source=self.name,
+                        title=title,
+                        author=author,
+                        external_id=book_id,
+                        metadata=metadata,
+                    )
+                )
 
             LOGGER.debug(f"Google Books搜索完成: {query} -> {len(results)} 结果")
             return results
@@ -365,21 +369,27 @@ class WebSearchSource(SearchSource):
             book_results = []
             seen_titles = set()
 
-            for result in all_results[:limit * 3]:  # 扩大搜索范围，然后去重
+            for result in all_results[: limit * 3]:  # 扩大搜索范围，然后去重
                 title, author = self._parse_book_info(result, query)
                 if title and title.lower() not in seen_titles:
                     seen_titles.add(title.lower())
-                    book_results.append(BookSearchResult(
-                        source=self.name,
-                        title=title,
-                        author=author,
-                        external_id=f"web_{hashlib.md5(title.encode()).hexdigest()[:8]}",
-                        metadata={
-                            "search_result": result,
-                            "source_type": "web_search",
-                            "search_query": result.get("search_query", "") if isinstance(result, dict) else ""
-                        }
-                    ))
+                    book_results.append(
+                        BookSearchResult(
+                            source=self.name,
+                            title=title,
+                            author=author,
+                            external_id=f"web_{hashlib.md5(title.encode()).hexdigest()[:8]}",
+                            metadata={
+                                "search_result": result,
+                                "source_type": "web_search",
+                                "search_query": (
+                                    result.get("search_query", "")
+                                    if isinstance(result, dict)
+                                    else ""
+                                ),
+                            },
+                        )
+                    )
 
             # 按相关性排序（标题匹配度）
             book_results.sort(key=lambda x: self._calculate_relevance(x.title, query), reverse=True)
@@ -410,7 +420,12 @@ class WebSearchSource(SearchSource):
                 url = result.get("url", "")
                 if url:
                     # 从URL提取标题
-                    title = url.split('/')[-1].replace('.html', '').replace('.htm', '').replace('.php', '')
+                    title = (
+                        url.split("/")[-1]
+                        .replace(".html", "")
+                        .replace(".htm", "")
+                        .replace(".php", "")
+                    )
 
             # 尝试提取作者
             snippet = result.get("snippet", "") or result.get("description", "")
@@ -425,13 +440,13 @@ class WebSearchSource(SearchSource):
         # 如果结果是字符串格式
         elif isinstance(result, str):
             # 尝试从字符串中提取标题和作者
-            lines = result.split('\n')
+            lines = result.split("\n")
             for line in lines:
                 line = line.strip()
                 if line and not title:
                     # 第一行可能是标题
                     if original_query.lower() in line.lower():
-                        title = line.split('-')[0].strip() if '-' in line else line
+                        title = line.split("-")[0].strip() if "-" in line else line
                     elif len(line) > 3:
                         title = line
                         break
@@ -457,13 +472,13 @@ class WebSearchSource(SearchSource):
 
         # 常见的作者模式（中英文）
         patterns = [
-            r'[作著]者[：:]\s*([^\n,，]+)',
-            r'[Bb]y\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)',
-            r'作者\s*[:：]?\s*([^\n,，]+)',
-            r'([^\n,，]+)\s*[著写编]',
-            r'Author:\s*([^\n,，]+)',
-            r'作者：\s*([^\n,，]+)',
-            r'作者\s*[:：]\s*([^\n,，]+)',
+            r"[作著]者[：:]\s*([^\n,，]+)",
+            r"[Bb]y\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
+            r"作者\s*[:：]?\s*([^\n,，]+)",
+            r"([^\n,，]+)\s*[著写编]",
+            r"Author:\s*([^\n,，]+)",
+            r"作者：\s*([^\n,，]+)",
+            r"作者\s*[:：]\s*([^\n,，]+)",
         ]
 
         for pattern in patterns:
@@ -471,7 +486,7 @@ class WebSearchSource(SearchSource):
             if match:
                 author = match.group(1).strip()
                 # 清理作者名
-                author = re.sub(r'[《》【】\[\]]', '', author)
+                author = re.sub(r"[《》【】\[\]]", "", author)
                 if author and author.lower() not in book_title.lower():
                     return author
 
@@ -528,7 +543,7 @@ class SearchCache:
     def _get_query_hash(self, query: str, source: str) -> str:
         """生成查询哈希"""
         text = f"{query}:{source}".lower().strip()
-        return hashlib.md5(text.encode('utf-8')).hexdigest()
+        return hashlib.md5(text.encode("utf-8")).hexdigest()
 
     def get(self, query: str, source: str) -> Optional[List[Dict[str, Any]]]:
         """从缓存获取结果"""
@@ -539,10 +554,13 @@ class SearchCache:
         current_time = int(time.time())
 
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT results_json FROM book_search_cache
             WHERE query_hash = ? AND expires_at > ?
-        """, (query_hash, current_time))
+        """,
+            (query_hash, current_time),
+        )
 
         row = cursor.fetchone()
         if row:
@@ -569,11 +587,14 @@ class SearchCache:
             results_json = json.dumps(results, ensure_ascii=False)
 
             cursor = self.conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO book_search_cache
                 (query_hash, query_text, source, results_json, created_at, expires_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (query_hash, query, source, results_json, current_time, expires_at))
+            """,
+                (query_hash, query, source, results_json, current_time, expires_at),
+            )
 
             self.conn.commit()
             LOGGER.debug(f"缓存设置: {query} [{source}] -> {len(results)} 结果")
@@ -602,7 +623,9 @@ class SearchCache:
 class BookSearchService:
     """书籍搜索服务，管理多个数据源和缓存"""
 
-    def __init__(self, db_connection: sqlite3.Connection, web_search_func: Optional[Callable] = None):
+    def __init__(
+        self, db_connection: sqlite3.Connection, web_search_func: Optional[Callable] = None
+    ):
         self.web_search_source = WebSearchSource(web_search_func)
         self.sources: List[SearchSource] = [
             OpenLibrarySource(),
@@ -619,7 +642,9 @@ class BookSearchService:
         if WEB_SEARCH_ENABLED and not self.web_search_source.is_available():
             LOGGER.warning("网络搜索已启用但不可用，请配置网络搜索函数")
 
-        LOGGER.info(f"书籍搜索服务初始化: {len(self.available_sources)}/{len(self.sources)} 个数据源可用")
+        LOGGER.info(
+            f"书籍搜索服务初始化: {len(self.available_sources)}/{len(self.sources)} 个数据源可用"
+        )
 
     def set_web_search_func(self, search_func: Callable):
         """设置网络搜索函数"""
@@ -709,7 +734,7 @@ class BookSearchService:
             "google_books": 0.15,
             "openlibrary": 0.1,
             "web_search": 0.05,
-            "local": 0.0
+            "local": 0.0,
         }
 
         return relevance + source_priority.get(result["source"], 0.0)
@@ -747,8 +772,7 @@ _search_service_instance = None
 
 
 def get_search_service(
-    db_connection: sqlite3.Connection,
-    web_search_func: Optional[Callable] = None
+    db_connection: sqlite3.Connection, web_search_func: Optional[Callable] = None
 ) -> BookSearchService:
     """获取搜索服务实例（单例模式）
 

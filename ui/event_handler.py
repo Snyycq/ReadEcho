@@ -8,7 +8,15 @@ ReadEcho Pro 事件处理器模块
 - 右侧：AI对话 + 提问
 """
 
-from PyQt6.QtWidgets import QMessageBox, QDialog, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton
+from PyQt6.QtWidgets import (
+    QMessageBox,
+    QDialog,
+    QVBoxLayout,
+    QLabel,
+    QLineEdit,
+    QHBoxLayout,
+    QPushButton,
+)
 from PyQt6.QtCore import Qt
 from config import LOGGER
 
@@ -56,6 +64,10 @@ class VoiceRecordingController:
 
     def _start(self):
         """开始录音"""
+        # 检查模型是否已加载
+        if not self.services.get_stt_model():
+            self.chat_display.append("<b>[错误]:</b> 模型尚未加载，请稍候")
+            return False
         LOGGER.debug("[DEBUG] 开始录音...")
         if self.services.start_recording():
             LOGGER.debug("[DEBUG] 录音服务启动成功")
@@ -106,7 +118,9 @@ class VoiceRecordingController:
 
     def _on_transcribed(self, note_type, content):
         """转录完成回调"""
-        LOGGER.debug(f"[DEBUG] 转录完成回调: note_type={note_type}, content_len={len(content) if content else 0}")
+        LOGGER.debug(
+            f"[DEBUG] 转录完成回调: note_type={note_type}, content_len={len(content) if content else 0}"
+        )
         if note_type == "Error":
             LOGGER.error(f"[DEBUG] 转录失败: {content}")
             self.chat_display.append(f"<b>[错误]:</b> {content}")
@@ -144,7 +158,7 @@ class EventHandler:
             services=main_window.services,
             button=main_window.voice_note_btn,
             chat_display=main_window.ai_chat_display,
-            thread_attr_name="note_thread"
+            thread_attr_name="note_thread",
         )
         self._note_recording.set_on_transcribed(self._on_voice_note_transcribed)
 
@@ -152,33 +166,15 @@ class EventHandler:
             services=main_window.services,
             button=main_window.voice_ask_btn,
             chat_display=main_window.ai_chat_display,
-            thread_attr_name="qa_thread"
+            thread_attr_name="qa_thread",
         )
         self._qa_recording.set_on_transcribed(self._on_voice_qa_transcribed)
 
+        # 初始禁用语音按钮，等模型加载完成后再启用
+        main_window.voice_note_btn.setEnabled(False)
+        main_window.voice_ask_btn.setEnabled(False)
+
     # --- 书籍管理事件 ---
-
-    def on_book_selected(self, item):
-        """当选择书籍时"""
-        data = item.data(DATA_ROLE)
-        if not data or not isinstance(data, dict):
-            return
-
-        book_id = data.get("book_id")
-        title = data.get("title", "")
-        author = data.get("author", "")
-
-        # 更新标题显示
-        display_text = f"{title}"
-        if author:
-            display_text += f" - {author}"
-        self.window.title_display.setText(display_text)
-
-        # 设置当前书籍
-        self.services.set_current_book(book_id, title)
-
-        # 加载该书籍的笔记列表
-        self.load_notes_for_book(book_id)
 
     def load_notes_for_book(self, book_id):
         """加载指定书籍的笔记列表（录音笔记 + 问答记录）"""
@@ -197,7 +193,9 @@ class EventHandler:
                 display_text = f"📝 {timestamp}: {text}"
             self.window.notes_list.addItem(display_text)
             item = self.window.notes_list.item(self.window.notes_list.count() - 1)
-            item.setData(DATA_ROLE, {"type": "recording", "id": rec_id, "text": text, "timestamp": timestamp})
+            item.setData(
+                DATA_ROLE, {"type": "recording", "id": rec_id, "text": text, "timestamp": timestamp}
+            )
 
         # 加载问答记录
         qa_records = self.services.get_qa_by_book(book_id)
@@ -210,7 +208,13 @@ class EventHandler:
             item = self.window.notes_list.item(self.window.notes_list.count() - 1)
             item.setData(
                 DATA_ROLE,
-                {"type": "qa", "id": qa_id, "question": question, "answer": answer, "timestamp": timestamp}
+                {
+                    "type": "qa",
+                    "id": qa_id,
+                    "question": question,
+                    "answer": answer,
+                    "timestamp": timestamp,
+                },
             )
 
     def on_note_selected(self, item):
@@ -507,10 +511,12 @@ class EventHandler:
         selected_model = self.window.model_selector.currentText()
 
         # 显示问题
+        style = (
+            "padding: 10px; margin: 8px 0; border: 1px solid #4a4a6a; "
+            'border-radius: 8px; font-family: "Microsoft YaHei", sans-serif;'
+        )
         self.window.ai_chat_display.append(
-            f"<div style='padding: 10px; margin: 8px 0; border: 1px solid #4a4a6a; border-radius: 8px;'>"
-            f"<b>👤 问题:</b> {question}"
-            "</div>"
+            f"<div style='{style}'>" f"<b>👤 问题:</b> {question}" "</div>"
         )
 
         # 禁用按钮
@@ -536,9 +542,14 @@ class EventHandler:
             return
 
         # 显示回答
+        style = (
+            "padding: 10px; margin: 8px 0; border: 1px solid #4a4a6a; "
+            'border-radius: 8px; font-family: "Microsoft YaHei", sans-serif;'
+        )
+        pre_style = "white-space: pre-wrap;"
         self.window.ai_chat_display.append(
-            f"<div style='padding: 10px; margin: 8px 0; border: 1px solid #4a4a6a; border-radius: 8px;'>"
-            f"<b>🤖 回答:</b><br/><pre style='white-space: pre-wrap;'>{content}</pre>"
+            f"<div style='{style}'>"
+            f"<b>🤖 回答:</b><br/><pre style='{pre_style}'>{content}</pre>"
             "</div>"
         )
 
@@ -558,6 +569,9 @@ class EventHandler:
 
         self.services.set_stt_model(model)
         self.window.stt_model = model
+        # 启用语音按钮
+        self.window.voice_note_btn.setEnabled(True)
+        self.window.voice_ask_btn.setEnabled(True)
         self.window.ai_chat_display.append("<b>[系统]:</b> Whisper模型已就绪，语音功能已启用")
 
     # --- 右键菜单 ---
@@ -663,7 +677,9 @@ class EventHandler:
                 self._update_book_info(book_id, new_title, new_author)
                 self.refresh_bookshelf()
                 self.services.set_current_book(book_id, new_title)
-                self.window.title_display.setText(f"{new_title}" + (f" - {new_author}" if new_author else ""))
+                self.window.title_display.setText(
+                    f"{new_title}" + (f" - {new_author}" if new_author else "")
+                )
                 self.window.ai_chat_display.append("<b>[系统]:</b> 书籍信息已更新")
             except Exception as e:
                 QMessageBox.warning(self.window, "错误", f"更新书籍失败: {e}")
@@ -673,7 +689,7 @@ class EventHandler:
         try:
             self.services.db.cursor.execute(
                 "UPDATE books SET title = ?, author = ? WHERE id = ?",
-                (new_title, new_author, book_id)
+                (new_title, new_author, book_id),
             )
             self.services.db.conn.commit()
             LOGGER.info(f"书籍信息已更新: ID={book_id}")
@@ -703,10 +719,7 @@ class EventHandler:
         from PyQt6.QtWidgets import QFileDialog
 
         file_path, _ = QFileDialog.getOpenFileName(
-            self.window,
-            "选择EPUB文件",
-            "",
-            "EPUB文件 (*.epub);;所有文件 (*)"
+            self.window, "选择EPUB文件", "", "EPUB文件 (*.epub);;所有文件 (*)"
         )
 
         if not file_path:
@@ -771,7 +784,7 @@ class EventHandler:
             QMessageBox.warning(
                 self.window,
                 "提示",
-                "该书籍不是通过EPUB导入的，无法获取全文内容。\n请使用[导入EPUB]功能添加电子书。"
+                "该书籍不是通过EPUB导入的，无法获取全文内容。\n请使用[导入EPUB]功能添加电子书。",
             )
             return
 
@@ -785,9 +798,10 @@ class EventHandler:
 
         # 启动分段AI线程
         from services.ai_processor import ChunkedAIThread
+
         title = self.services.current_book_title
 
-        thread = ChunkedAIThread("summary", full_text, title)
+        thread = ChunkedAIThread("summary", full_text, title, text_length=len(full_text))
         thread.progress_updated.connect(self._show_progress)
         thread.result_ready.connect(self._on_book_summary_ready)
         self.window.summary_thread = thread
@@ -808,7 +822,7 @@ class EventHandler:
                 progress_text = f"[{bar}] {percent}% {msg}"
 
                 # 使用 HTML 格式，每次覆盖更新同一条消息
-                if hasattr(self.window, '_progress_html'):
+                if hasattr(self.window, "_progress_html"):
                     # 更新已有的进度条
                     cursor = self.window.ai_chat_display.textCursor()
                     cursor.movePosition(cursor.MoveOperation.End)
@@ -823,7 +837,7 @@ class EventHandler:
                     self.window._progress_html = True
         else:
             # 非进度条消息，清除进度条标记
-            if hasattr(self.window, '_progress_html'):
+            if hasattr(self.window, "_progress_html"):
                 del self.window._progress_html
             self.window.ai_chat_display.append(
                 f"<span style='color: #8B7D6B;'>[进度] {message}</span>"
@@ -835,9 +849,14 @@ class EventHandler:
             self.window.ai_chat_display.append(f"<b>[错误]:</b> {content}")
             return
 
+        style = (
+            "padding: 10px; margin: 8px 0; border: 1px solid #4a4a6a; "
+            'border-radius: 8px; font-family: "Microsoft YaHei", sans-serif;'
+        )
+        pre_style = "white-space: pre-wrap;"
         self.window.ai_chat_display.append(
-            f"<div style='padding: 10px; margin: 8px 0; border: 1px solid #4a4a6a; border-radius: 8px;'>"
-            f"<b>📊 书籍总结:</b><br/><pre style='white-space: pre-wrap;'>{content}</pre>"
+            f"<div style='{style}'>"
+            f"<b>📊 书籍总结:</b><br/><pre style='{pre_style}'>{content}</pre>"
             "</div>"
         )
 
@@ -854,7 +873,7 @@ class EventHandler:
             QMessageBox.warning(
                 self.window,
                 "提示",
-                "该书籍不是通过EPUB导入的，无法获取全文内容。\n请使用[导入EPUB]功能添加电子书。"
+                "该书籍不是通过EPUB导入的，无法获取全文内容。\n请使用[导入EPUB]功能添加电子书。",
             )
             return
 
@@ -868,9 +887,10 @@ class EventHandler:
 
         # 启动分段AI线程
         from services.ai_processor import ChunkedAIThread
+
         title = self.services.current_book_title
 
-        thread = ChunkedAIThread("mindmap", full_text, title)
+        thread = ChunkedAIThread("mindmap", full_text, title, text_length=len(full_text))
         thread.progress_updated.connect(self._show_progress)
         thread.result_ready.connect(self._on_mindmap_ready)
         self.window.mindmap_thread = thread
@@ -882,9 +902,14 @@ class EventHandler:
             self.window.ai_chat_display.append(f"<b>[错误]:</b> {content}")
             return
 
+        style = (
+            "padding: 10px; margin: 8px 0; border: 1px solid #4a4a6a; "
+            'border-radius: 8px; font-family: "Microsoft YaHei", sans-serif;'
+        )
+        pre_style = "white-space: pre-wrap;"
         self.window.ai_chat_display.append(
-            f"<div style='padding: 10px; margin: 8px 0; border: 1px solid #4a4a6a; border-radius: 8px;'>"
-            f"<b>🧠 思维导图:</b><br/><pre style='white-space: pre-wrap;'>{content}</pre>"
+            f"<div style='{style}'>"
+            f"<b>🧠 思维导图:</b><br/><pre style='{pre_style}'>{content}</pre>"
             "</div>"
         )
 
@@ -898,9 +923,9 @@ class EventHandler:
         book_summary_action = menu.addAction("📊 书籍总结")
         mindmap_action = menu.addAction("🧠 思维导图")
 
-        action = menu.exec(self.window.add_ai_menu_btn.mapToGlobal(
-            self.window.add_ai_menu_btn.rect().bottomLeft()
-        ))
+        action = menu.exec(
+            self.window.add_ai_menu_btn.mapToGlobal(self.window.add_ai_menu_btn.rect().bottomLeft())
+        )
 
         if action == book_summary_action:
             self.generate_book_summary()
@@ -912,10 +937,16 @@ class EventHandler:
     def on_model_changed(self, model_name):
         """模型选择改变时的处理"""
         from config import save_selected_model
+        import sys
 
-        if model_name == "qwen2.5:7b":
-            # 保存选择
-            save_selected_model(model_name)
+        save_selected_model(model_name)
+
+        # 检查是否已在虚拟环境中
+        in_venv = hasattr(sys, "real_prefix") or (
+            hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix
+        )
+
+        if model_name == "qwen2.5:7b" and not in_venv:
             result = QMessageBox.question(
                 self.window,
                 "切换到本地模型",
@@ -925,31 +956,24 @@ class EventHandler:
             if result == QMessageBox.StandardButton.Yes:
                 self._restart_with_venv()
         else:
-            # 保存选择
-            save_selected_model(model_name)
             LOGGER.info(f"切换到模型: {model_name}")
             self.window.ai_chat_display.append(f"<b>[系统]:</b> 已切换到 {model_name}")
 
     def _restart_with_venv(self):
         """使用虚拟环境重启应用"""
-        import sys
         import os
         import subprocess
 
-        # 项目根目录（ui/ 的上级目录）
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        venv_python = os.path.join(project_root, "venv_ai", "Scripts", "python.exe")
         main_script = os.path.join(project_root, "main.py")
 
-        if not os.path.exists(venv_python):
-            QMessageBox.warning(self.window, "错误", "未找到虚拟环境，请先安装 venv_ai")
-            return
-
-        # 启动新进程
-        subprocess.Popen([venv_python, main_script], cwd=project_root)
-
-        # 关闭当前应用
-        self.window.close()
+        # 使用 .venv 虚拟环境
+        venv_python = os.path.join(project_root, ".venv", "Scripts", "python.exe")
+        if os.path.exists(venv_python):
+            subprocess.Popen([venv_python, main_script], cwd=project_root)
+            self.window.close()
+        else:
+            QMessageBox.warning(self.window, "错误", "未找到虚拟环境，请先创建 .venv")
 
     def cleanup(self) -> None:
         """清理事件处理器资源。"""

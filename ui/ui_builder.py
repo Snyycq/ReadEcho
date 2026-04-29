@@ -154,11 +154,7 @@ def create_right_panel(widget):
     model_layout = QHBoxLayout()
     model_layout.addWidget(QLabel("模型:"))
     widget.model_selector = QComboBox()
-    widget.model_selector.addItems([
-        "deepseek-v4-pro",
-        "deepseek-v4-flash",
-        "qwen2.5:7b"
-    ])
+    widget.model_selector.addItems(["deepseek-v4-pro", "deepseek-v4-flash", "qwen2.5:7b"])
     widget.model_selector.setToolTip("选择AI模型")
     # 加载上次选择的模型
     saved_model = get_selected_model()

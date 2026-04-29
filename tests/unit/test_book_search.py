@@ -2,17 +2,15 @@
 书籍搜索模块单元测试
 """
 
-import json
 import sqlite3
 import tempfile
 import os
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import pytest
 
 from services.book_search import (
     BookSearchResult,
-    SearchSource,
     OpenLibrarySource,
     DoubanSource,
     GoogleBooksSource,
@@ -21,7 +19,7 @@ from services.book_search import (
     BookSearchService,
     get_search_service,
 )
-from config import WEB_SEARCH_RETRY_ATTEMPTS, WEB_SEARCH_RETRY_DELAY
+from config import WEB_SEARCH_RETRY_ATTEMPTS
 
 
 class TestBookSearchResult:
@@ -34,7 +32,7 @@ class TestBookSearchResult:
             title="Test Book",
             author="Test Author",
             external_id="test_123",
-            metadata={"year": 2024}
+            metadata={"year": 2024},
         )
         d = result.to_dict()
         assert d["source"] == "test"
@@ -46,11 +44,7 @@ class TestBookSearchResult:
     def test_to_dict_empty_author(self):
         """测试空作者情况"""
         result = BookSearchResult(
-            source="test",
-            title="Book",
-            author="",
-            external_id="id",
-            metadata={}
+            source="test", title="Book", author="", external_id="id", metadata={}
         )
         d = result.to_dict()
         assert d["author"] == ""
@@ -64,7 +58,7 @@ class TestOpenLibrarySource:
         source = OpenLibrarySource()
         assert source.is_available() is True
 
-    @patch('services.book_search.requests.get')
+    @patch("services.book_search.requests.get")
     def test_search_success(self, mock_get):
         """测试成功搜索"""
         mock_response = Mock()
@@ -76,7 +70,7 @@ class TestOpenLibrarySource:
                     "key": "/works/OL123W",
                     "first_publish_year": 2020,
                     "isbn": ["1234567890"],
-                    "language": ["eng"]
+                    "language": ["eng"],
                 }
             ]
         }
@@ -91,10 +85,11 @@ class TestOpenLibrarySource:
         assert results[0].author == "Author One, Author Two"
         assert results[0].source == "openlibrary"
 
-    @patch('services.book_search.requests.get')
+    @patch("services.book_search.requests.get")
     def test_search_with_retry_on_timeout(self, mock_get):
         """测试超时重试机制"""
         import requests
+
         # 提供4个元素：标题搜索2次超时 + 通用搜索1次超时 + 成功
         mock_get.side_effect = [
             requests.exceptions.Timeout(),
@@ -111,7 +106,7 @@ class TestOpenLibrarySource:
         assert mock_get.call_count >= 2
         assert results == []
 
-    @patch('services.book_search.requests.get')
+    @patch("services.book_search.requests.get")
     def test_search_empty_results(self, mock_get):
         """测试空结果"""
         mock_response = Mock()
@@ -124,7 +119,7 @@ class TestOpenLibrarySource:
 
         assert results == []
 
-    @patch('services.book_search.requests.get')
+    @patch("services.book_search.requests.get")
     def test_search_missing_fields(self, mock_get):
         """测试缺失字段的情况"""
         mock_response = Mock()
@@ -149,17 +144,17 @@ class TestDoubanSource:
 
     def test_is_available_no_key(self):
         """测试无API密钥时不可用"""
-        with patch('services.book_search.DOUBAN_API_KEY', ''):
+        with patch("services.book_search.DOUBAN_API_KEY", ""):
             source = DoubanSource()
             assert source.is_available() is False
 
     def test_is_available_with_key(self):
         """测试有API密钥时可用"""
-        with patch('services.book_search.DOUBAN_API_KEY', 'test_key'):
+        with patch("services.book_search.DOUBAN_API_KEY", "test_key"):
             source = DoubanSource()
             assert source.is_available() is True
 
-    @patch('services.book_search.DOUBAN_API_KEY', '')
+    @patch("services.book_search.DOUBAN_API_KEY", "")
     def test_search_no_key(self):
         """测试无密钥时搜索返回空"""
         source = DoubanSource()
@@ -172,13 +167,13 @@ class TestGoogleBooksSource:
 
     def test_is_available_no_key(self):
         """测试无API密钥时不可用"""
-        with patch('services.book_search.GOOGLE_BOOKS_API_KEY', ''):
+        with patch("services.book_search.GOOGLE_BOOKS_API_KEY", ""):
             source = GoogleBooksSource()
             assert source.is_available() is False
 
     def test_is_available_with_key(self):
         """测试有API密钥时可用"""
-        with patch('services.book_search.GOOGLE_BOOKS_API_KEY', 'test_key'):
+        with patch("services.book_search.GOOGLE_BOOKS_API_KEY", "test_key"):
             source = GoogleBooksSource()
             assert source.is_available() is True
 
@@ -226,8 +221,7 @@ class TestWebSearchSource:
         """测试从字典解析书籍信息"""
         source = WebSearchSource(lambda x: [])
         title, author = source._parse_book_info(
-            {"title": "Test Book", "snippet": "作者：张三"},
-            "Test"
+            {"title": "Test Book", "snippet": "作者：张三"}, "Test"
         )
         assert "Test Book" in title or "Test" in title
 
@@ -235,8 +229,7 @@ class TestWebSearchSource:
         """测试从字符串解析书籍信息"""
         source = WebSearchSource(lambda x: [])
         title, author = source._parse_book_info(
-            "Python Book\nAuthor: John\nDescription here",
-            "Python"
+            "Python Book\nAuthor: John\nDescription here", "Python"
         )
         assert title != ""
 
@@ -259,7 +252,7 @@ class TestSearchCache:
     @pytest.fixture
     def temp_db(self):
         """创建临时数据库"""
-        fd, path = tempfile.mkstemp(suffix='.db')
+        fd, path = tempfile.mkstemp(suffix=".db")
         os.close(fd)
         conn = sqlite3.connect(path)
         yield conn
@@ -268,7 +261,7 @@ class TestSearchCache:
 
     def test_init_cache_table(self, temp_db):
         """测试初始化缓存表"""
-        cache = SearchCache(temp_db)
+        SearchCache(temp_db)  # noqa: F841 - side effect creates table
         cursor = temp_db.cursor()
         cursor.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='book_search_cache'"
@@ -308,11 +301,14 @@ class TestSearchCache:
 
         # 插入过期缓存
         cursor = temp_db.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO book_search_cache
             (query_hash, query_text, source, results_json, created_at, expires_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, ("hash1", "query1", "source1", "[]", 0, 1))
+        """,
+            ("hash1", "query1", "source1", "[]", 0, 1),
+        )
         temp_db.commit()
 
         cache.cleanup_expired()
@@ -322,7 +318,7 @@ class TestSearchCache:
 
     def test_cache_disabled(self, temp_db):
         """测试缓存禁用"""
-        with patch('services.book_search.SEARCH_CACHE_ENABLED', False):
+        with patch("services.book_search.SEARCH_CACHE_ENABLED", False):
             cache = SearchCache(temp_db)
             results = [{"title": "Book"}]
 
@@ -338,7 +334,7 @@ class TestBookSearchService:
     @pytest.fixture
     def temp_db(self):
         """创建临时数据库"""
-        fd, path = tempfile.mkstemp(suffix='.db')
+        fd, path = tempfile.mkstemp(suffix=".db")
         os.close(fd)
         conn = sqlite3.connect(path)
         yield conn
@@ -379,14 +375,12 @@ class TestBookSearchService:
         results = service.search(123)
         assert results == []
 
-    @patch('services.book_search.requests.get')
+    @patch("services.book_search.requests.get")
     def test_search_with_results(self, mock_get, temp_db):
         """测试有结果的搜索"""
         mock_response = Mock()
         mock_response.json.return_value = {
-            "docs": [
-                {"title": "Python Book", "author_name": ["Author"], "key": "/works/OL1W"}
-            ]
+            "docs": [{"title": "Python Book", "author_name": ["Author"], "key": "/works/OL1W"}]
         }
         mock_response.raise_for_status = Mock()
         mock_get.return_value = mock_response
@@ -436,6 +430,7 @@ class TestBookSearchService:
 
     def test_search_with_web_search_failure(self, temp_db):
         """测试网络搜索失败的情况"""
+
         # 模拟网络搜索函数返回空结果
         def mock_web_search(query):
             return []
@@ -446,6 +441,7 @@ class TestBookSearchService:
 
     def test_search_with_invalid_web_search_func(self, temp_db):
         """测试无效的网络搜索函数"""
+
         # 模拟网络搜索函数抛出异常
         def mock_web_search(query):
             raise Exception("Network error")
@@ -456,6 +452,7 @@ class TestBookSearchService:
 
     def test_search_with_empty_web_search_results(self, temp_db):
         """测试空的网络搜索结果"""
+
         # 模拟网络搜索函数返回空列表
         def mock_web_search(query):
             return []
@@ -466,6 +463,7 @@ class TestBookSearchService:
 
     def test_search_with_web_search_results(self, temp_db):
         """测试网络搜索返回结果"""
+
         # 模拟网络搜索函数返回一些结果
         def mock_web_search(query):
             return [
@@ -480,6 +478,7 @@ class TestBookSearchService:
 
     def test_search_with_web_search_and_other_sources(self, temp_db):
         """测试网络搜索和其他数据源的组合"""
+
         # 模拟网络搜索函数返回一些结果
         def mock_web_search(query):
             return [
@@ -495,6 +494,7 @@ class TestBookSearchService:
 
     def test_search_with_relevance_sorting(self, temp_db):
         """测试按相关性排序"""
+
         # 模拟网络搜索函数返回一些结果
         def mock_web_search(query):
             return [
@@ -518,9 +518,11 @@ class TestBookSearchService:
 
     def test_search_with_network_timeout(self, temp_db):
         """测试网络超时情况"""
+
         # 模拟网络搜索函数超时
         def mock_web_search(query):
             import time
+
             time.sleep(5)  # 模拟超时
             return []
 
@@ -575,6 +577,7 @@ class TestBookSearchService:
         """测试网络搜索重试机制"""
         # 模拟网络搜索函数第一次失败，第二次成功
         call_count = 0
+
         def mock_web_search(query):
             nonlocal call_count
             call_count += 1
@@ -591,6 +594,7 @@ class TestBookSearchService:
 
     def test_search_with_web_search_max_results(self, temp_db):
         """测试网络搜索最大结果数限制"""
+
         # 模拟网络搜索函数返回大量结果
         def mock_web_search(query):
             return [{"title": f"Book {i}", "author": "Author"} for i in range(100)]
@@ -601,9 +605,11 @@ class TestBookSearchService:
 
     def test_search_with_web_search_timeout_config(self, temp_db):
         """测试网络搜索超时配置"""
+
         # 模拟网络搜索函数超时
         def mock_web_search(query):
             import time
+
             time.sleep(20)  # 超过默认超时时间
             return []
 
@@ -615,6 +621,7 @@ class TestBookSearchService:
         """测试网络搜索重试次数配置"""
         # 模拟网络搜索函数多次失败
         call_count = 0
+
         def mock_web_search(query):
             nonlocal call_count
             call_count += 1
@@ -631,8 +638,10 @@ class TestBookSearchService:
         """测试网络搜索重试延迟配置"""
         # 模拟网络搜索函数失败，测试重试延迟
         call_times = []
+
         def mock_web_search(query):
             import time
+
             call_times.append(time.time())
             return []  # 总是失败
 
@@ -648,7 +657,7 @@ class TestBookSearchService:
     def test_search_with_disabled_web_search(self, temp_db):
         """测试禁用网络搜索"""
         # 模拟网络搜索禁用
-        with patch('services.book_search.WEB_SEARCH_ENABLED', False):
+        with patch("services.book_search.WEB_SEARCH_ENABLED", False):
             service = BookSearchService(temp_db)
             results = service.search("test book")
             assert len(results) >= 0  # 应该至少返回其他数据源的结果
@@ -672,7 +681,7 @@ class TestGetSearchService:
     @pytest.fixture
     def temp_db(self):
         """创建临时数据库"""
-        fd, path = tempfile.mkstemp(suffix='.db')
+        fd, path = tempfile.mkstemp(suffix=".db")
         os.close(fd)
         conn = sqlite3.connect(path)
         yield conn
@@ -682,6 +691,7 @@ class TestGetSearchService:
     def test_singleton(self, temp_db):
         """测试单例模式"""
         from services import book_search
+
         book_search._search_service_instance = None  # 重置单例
 
         service1 = get_search_service(temp_db)
@@ -692,6 +702,7 @@ class TestGetSearchService:
     def test_singleton_with_web_search(self, temp_db):
         """测试带网络搜索函数的单例"""
         from services import book_search
+
         book_search._search_service_instance = None
 
         service1 = get_search_service(temp_db)
@@ -703,4 +714,5 @@ class TestGetSearchService:
     def teardown_method(self):
         """每个测试后重置单例"""
         from services import book_search
+
         book_search._search_service_instance = None

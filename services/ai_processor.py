@@ -7,9 +7,16 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from typing import Optional, Callable
 
 from config import (
-    WHISPER_MODEL, AI_PROVIDER,
-    DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL,
-    OLLAMA_MODEL, OLLAMA_BASE_URL, LOGGER
+    WHISPER_MODEL,
+    WHISPER_BEAM_SIZE,
+    WHISPER_LANGUAGE,
+    WHISPER_CORRECTION_ENABLED,
+    AI_PROVIDER,
+    DEEPSEEK_API_KEY,
+    DEEPSEEK_BASE_URL,
+    DEEPSEEK_MODEL,
+    OLLAMA_MODEL,
+    LOGGER,
 )
 from utils.validators import InputValidator
 from core.model_cache import model_cache
@@ -40,20 +47,19 @@ def chat_completion(prompt: str, model: str = None) -> str:
 
         if use_ollama:
             import ollama
+
             ollama_model = model or OLLAMA_MODEL
             resp = ollama.chat(
-                model=ollama_model,
-                messages=[{"role": "user", "content": prompt}],
-                stream=False
+                model=ollama_model, messages=[{"role": "user", "content": prompt}], stream=False
             )
             return resp["message"]["content"]
         else:
             import openai
+
             deepseek_model = model or DEEPSEEK_MODEL
             client = openai.OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
             resp = client.chat.completions.create(
-                model=deepseek_model,
-                messages=[{"role": "user", "content": prompt}]
+                model=deepseek_model, messages=[{"role": "user", "content": prompt}]
             )
             return resp.choices[0].message.content
     except Exception as e:
@@ -106,8 +112,14 @@ class AIProcessThread(QThread):
     error_occurred = pyqtSignal(str)
     progress_updated = pyqtSignal(str)
 
-    def __init__(self, action_type: str, data: str, book_title: str, stt_model: Optional[object],
-                 model: Optional[str] = None):
+    def __init__(
+        self,
+        action_type: str,
+        data: str,
+        book_title: str,
+        stt_model: Optional[object],
+        model: Optional[str] = None,
+    ):
         """
         初始化AI处理线程
 
@@ -211,11 +223,14 @@ class AIProcessThread(QThread):
             # 修复 tqdm 的 stdout/stderr 问题（Windows 环境）
             class SafeStream:
                 def __init__(self):
-                    self._file = open(os.devnull, 'w')
+                    self._file = open(os.devnull, "w")
+
                 def write(self, s):
                     pass
+
                 def flush(self):
                     pass
+
                 def close(self):
                     self._file.close()
 
@@ -228,7 +243,11 @@ class AIProcessThread(QThread):
                 LOGGER.debug("[DEBUG-转录] 开始调用 Whisper transcribe...")
                 # 使用Whisper转录音频
                 result = self.stt_model.transcribe(
-                    audio_path, fp16=torch.cuda.is_available(), beam_size=1, verbose=False
+                    audio_path,
+                    fp16=torch.cuda.is_available(),
+                    beam_size=WHISPER_BEAM_SIZE,
+                    language=WHISPER_LANGUAGE,
+                    verbose=False,
                 )
                 LOGGER.debug(f"[DEBUG-转录] Whisper 转录完成，结果类型: {type(result)}")
             finally:
@@ -254,6 +273,8 @@ class AIProcessThread(QThread):
 
     def _correct_transcription(self, text: str) -> str:
         """使用AI模型自动纠正中文转录文本中的错别字"""
+        if not WHISPER_CORRECTION_ENABLED:
+            return text
         try:
             if not text or not isinstance(text, str):
                 return text
@@ -292,7 +313,9 @@ class AIProcessThread(QThread):
             raise
 
 
-def split_text_into_chunks(text: str, max_chunk_size: int = 8000, min_chunk_size: int = 1000) -> list:
+def split_text_into_chunks(
+    text: str, max_chunk_size: int = 8000, min_chunk_size: int = 1000
+) -> list:
     """将文本按段落边界分段（优化版：更大段落减少处理次数）
 
     Args:
@@ -331,21 +354,65 @@ def split_text_into_chunks(text: str, max_chunk_size: int = 8000, min_chunk_size
     return chunks if chunks else [text[:max_chunk_size]]
 
 
+def classify_book_length(text_length: int) -> dict:
+    """根据文本长度自适应调整处理参数"""
+    if text_length < 20000:  # 短书 <2万字符
+        return {
+            "tier": "short",
+            "max_chunk_size": text_length,  # 不分块
+            "chunk_content_limit": min(text_length, 6000),
+            "sub_summary_limit": 2000,
+            "max_workers": 1,
+            "summary_word_range": "150-300字",
+            "num_key_points": "3-5",
+        }
+    elif text_length < 100000:  # 中等书 2-10万字符
+        return {
+            "tier": "medium",
+            "max_chunk_size": 8000,
+            "chunk_content_limit": 5000,
+            "sub_summary_limit": 1500,
+            "max_workers": 3,
+            "summary_word_range": "300-500字",
+            "num_key_points": "5-7",
+        }
+    else:  # 长书 >10万字符
+        return {
+            "tier": "long",
+            "max_chunk_size": 12000,
+            "chunk_content_limit": 6000,
+            "sub_summary_limit": 1200,
+            "max_workers": 5,
+            "summary_word_range": "500-800字",
+            "num_key_points": "7-10",
+        }
+
+
 class ChunkedAIThread(QThread):
-    """分段 AI 处理线程：将长文本分段总结后再合并（优化版：更大段落+进度条）"""
+    """分段 AI 处理线程：将长文本分段总结后再合并（自适应分段+优化prompt）"""
 
     result_ready = pyqtSignal(str, str)
     progress_updated = pyqtSignal(str)  # 发送进度信息，格式: "progress:百分比:消息"
 
-    def __init__(self, action_type: str, full_text: str, book_title: str,
-                 model: str = None, max_chunk_size: int = 8000, max_workers: int = 3):
+    def __init__(
+        self,
+        action_type: str,
+        full_text: str,
+        book_title: str,
+        model: str = None,
+        text_length: int = 0,
+    ):
         super().__init__()
         self.action_type = action_type  # "summary" 或 "mindmap"
         self.full_text = full_text
         self.book_title = book_title
         self.model = model
-        self.max_chunk_size = max_chunk_size
-        self.max_workers = max_workers  # 并发数
+        # 根据文本长度自适应调整参数
+        self.config = classify_book_length(text_length or len(full_text))
+        self.max_chunk_size = self.config["max_chunk_size"]
+        self.max_workers = self.config["max_workers"]
+        self.chunk_content_limit = self.config["chunk_content_limit"]
+        self.sub_summary_limit = self.config["sub_summary_limit"]
 
     def _emit_progress(self, percent: int, message: str):
         """发送进度信息"""
@@ -414,40 +481,43 @@ class ChunkedAIThread(QThread):
 
     def _process_single_chunk(self, chunk: str) -> str:
         """处理单个文本段落"""
-        # 截取前3000字符用于处理
-        short_chunk = chunk[:3000] + "..." if len(chunk) > 3000 else chunk
+        short_chunk = (
+            chunk[: self.chunk_content_limit] + "..."
+            if len(chunk) > self.chunk_content_limit
+            else chunk
+        )
 
         if self.action_type == "mindmap":
-            prompt = f"用树状结构列出核心主题和关键点：\n{short_chunk}"
+            prompt = f"请提取以下内容的核心主题和子主题：\n{short_chunk}"
         else:
-            prompt = f"详细总结这段内容的要点，包含3-5个主要观点：\n{short_chunk}"
+            prompt = f"请总结以下内容的核心要点（{self.config['num_key_points']}个），每个要点一句话概括：\n{short_chunk}"
 
         return chat_completion(prompt, self.model)
 
     def _merge_summaries(self, summaries: list) -> str:
-        """合并多个段落总结为最终结果（总-分-总结构）"""
-        # 截取每个总结的前800字符
-        short_summaries = [s[:800] for s in summaries]
-        combined = "\n\n".join(
-            f"【第{i+1}部分】{s}" for i, s in enumerate(short_summaries)
-        )
+        """合并多个段落总结为最终结果"""
+        short_summaries = [s[: self.sub_summary_limit] for s in summaries]
+        combined = "\n\n".join(f"【第{i+1}部分】{s}" for i, s in enumerate(short_summaries))
 
         if self.action_type == "mindmap":
             merge_prompt = (
-                f"请为《{self.book_title}》生成详细的思维导图，使用树状结构。\n"
-                f"要求：顶层为书名，第二层为主要章节/主题，第三层为关键内容和要点。\n"
-                f"使用 Unicode 树状符号（├── └── │）展示层级关系。\n\n"
+                f"请为《{self.book_title}》生成思维导图。格式要求：\n"
+                f"- 第1层：书名\n"
+                f"- 第2层：3-5个主要章节/主题\n"
+                f"- 第3层：每个主题下的2-4个关键点\n"
+                f"- 使用Unicode树状符号（├── └── │）展示层级\n"
+                f"- 每个节点不超过15个字\n\n"
                 f"各部分内容：\n{combined}"
             )
         else:
             merge_prompt = (
-                f"请为《{self.book_title}》撰写一份详细的书籍总结，采用【总-分-总】结构：\n\n"
-                f"【总体概述】（100-150字）：简要介绍这本书的主题、作者背景和核心价值。\n\n"
-                f"【核心内容】（分点展开）：\n"
-                f"- 详细列出3-5个主要观点/章节\n"
-                f"- 每个观点用2-3句话解释说明\n"
+                f"请为《{self.book_title}》撰写一份结构清晰的书籍总结。\n\n"
+                f"【核心主题】（1-2句话）：全书的核心论点或主旨\n\n"
+                f"【关键要点】（{self.config['num_key_points']}个）：\n"
+                f"- 每个要点用加粗标题+2-3句解释\n"
                 f"- 包含具体例子或关键论述\n\n"
-                f"【总结与推荐】（50-100字）：总结阅读价值和适合人群。\n\n"
+                f"【亮点摘录】：引用原文中2-3句最有价值的话\n\n"
+                f"【适读人群】（1句话）：适合什么样的读者\n\n"
                 f"各部分内容：\n{combined}"
             )
 

@@ -82,11 +82,14 @@ class ModelCache:
             # 修复 tqdm 的 stdout/stderr 问题（Windows 环境）
             class SafeStream:
                 def __init__(self):
-                    self._file = open(os.devnull, 'w')
+                    self._file = open(os.devnull, "w")
+
                 def write(self, s):
                     pass
+
                 def flush(self):
                     pass
+
                 def close(self):
                     self._file.close()
 

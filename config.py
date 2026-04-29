@@ -188,7 +188,8 @@ WARM_STYLESHEET = """
     QWidget {
         background-color: #F5F0E8;
         color: #3D3229;
-        font-family: 'Segoe UI';
+        font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+        font-size: 14px;
     }
     QTextEdit {
         background-color: #FFFBF5;
@@ -196,6 +197,7 @@ WARM_STYLESHEET = """
         border-radius: 5px;
         padding: 10px;
         color: #3D3229;
+        font-size: 14px;
     }
     QLineEdit {
         background-color: #FFFBF5;
@@ -203,6 +205,7 @@ WARM_STYLESHEET = """
         padding: 5px;
         border-radius: 3px;
         color: #3D3229;
+        font-size: 14px;
     }
     QPushButton {
         background-color: #C9A96E;
@@ -210,6 +213,7 @@ WARM_STYLESHEET = """
         padding: 8px;
         font-weight: bold;
         color: #FFFFFF;
+        font-size: 13px;
     }
     QPushButton:hover {
         background-color: #B8944D;
@@ -230,6 +234,7 @@ WARM_STYLESHEET = """
         border: 1px solid #D4C5A9;
         border-radius: 5px;
         color: #3D3229;
+        font-size: 13px;
     }
     QListWidget::item:selected {
         background-color: #E8DCC8;
@@ -244,6 +249,7 @@ WARM_STYLESHEET = """
         border-radius: 5px;
         margin-top: 10px;
         color: #5C4A32;
+        font-size: 14px;
     }
     QGroupBox::title {
         subcontrol-origin: margin;
@@ -260,13 +266,15 @@ DARK_STYLESHEET = """
     QWidget {
         background-color: #2b2b2b;
         color: #ffffff;
-        font-family: 'Segoe UI';
+        font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+        font-size: 14px;
     }
     QTextEdit {
         background-color: #2b2b2b;
         border: 1px solid #3c3c3c;
         border-radius: 5px;
         padding: 10px;
+        font-size: 14px;
     }
     QLineEdit {
         background-color: #3c3c3c;
@@ -274,6 +282,7 @@ DARK_STYLESHEET = """
         padding: 5px;
         border-radius: 3px;
         color: #ffffff;
+        font-size: 14px;
     }
     QPushButton {
         background-color: #0d6efd;
@@ -281,6 +290,7 @@ DARK_STYLESHEET = """
         padding: 8px;
         font-weight: bold;
         color: #ffffff;
+        font-size: 13px;
     }
     QPushButton:hover {
         background-color: #0b5ed7;
@@ -300,6 +310,7 @@ DARK_STYLESHEET = """
         background-color: #3c3c3c;
         border: 1px solid #555555;
         border-radius: 5px;
+        font-size: 13px;
     }
     QListWidget::item:selected {
         background-color: #1a1a1a;
@@ -313,6 +324,7 @@ DARK_STYLESHEET = """
         border: 2px solid #555555;
         border-radius: 5px;
         margin-top: 10px;
+        font-size: 14px;
     }
     QGroupBox::title {
         subcontrol-origin: margin;
@@ -332,6 +344,9 @@ STYLESHEET = WARM_STYLESHEET
 WHISPER_MODEL = get_env_var(
     "WHISPER_MODEL", "tiny"
 )  # Whisper模型大小 (tiny, base, small, medium, large)
+WHISPER_BEAM_SIZE = get_env_int("WHISPER_BEAM_SIZE", 5)  # Beam search大小，越大越准但越慢
+WHISPER_LANGUAGE = get_env_var("WHISPER_LANGUAGE", "zh")  # 转录语言，zh=中文
+WHISPER_CORRECTION_ENABLED = get_env_bool("WHISPER_CORRECTION_ENABLED", True)  # 是否启用AI纠正
 
 # AI 提供商选择：ollama 或 deepseek
 AI_PROVIDER = get_env_var("AI_PROVIDER", "deepseek")
@@ -348,6 +363,7 @@ OLLAMA_BASE_URL = get_env_var("OLLAMA_BASE_URL", "http://localhost:11434")
 # --- 模型选择持久化 ---
 _MODEL_CONFIG_FILE = Path.home() / ".readecho" / "model_config.txt"
 
+
 def get_selected_model() -> str:
     """获取上次选择的模型"""
     try:
@@ -357,6 +373,7 @@ def get_selected_model() -> str:
         pass
     return DEEPSEEK_MODEL
 
+
 def save_selected_model(model: str) -> None:
     """保存选择的模型"""
     try:
@@ -364,6 +381,7 @@ def save_selected_model(model: str) -> None:
         _MODEL_CONFIG_FILE.write_text(model)
     except Exception as e:
         LOGGER.warning(f"保存模型配置失败: {e}")
+
 
 # 记录AI配置
 LOGGER.info(f"Whisper模型: {WHISPER_MODEL}")

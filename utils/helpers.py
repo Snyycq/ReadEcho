@@ -40,14 +40,14 @@ def format_summary_content(content):
             continue
 
         # 检查是否是有序列表项
-        if re.match(r'^\d+\.', line):
+        if re.match(r"^\d+\.", line):
             if not in_list or list_type != "ol":
                 if in_list:
                     formatted_lines.append("</li></ul>" if list_type == "ul" else "</li></ol>")
                 formatted_lines.append("<ol>")
                 in_list = True
                 list_type = "ol"
-            item_text = line[line.find(".") + 1:].strip()
+            item_text = line[line.find(".") + 1 :].strip()
             formatted_lines.append(f"<li>{item_text}</li>")
         # 检查是否是无序列表项
         elif line[:2] in ["- ", "* ", "• "]:

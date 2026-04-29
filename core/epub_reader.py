@@ -5,7 +5,6 @@ ReadEcho Pro EPUB 电子书读取模块
 
 import re
 from pathlib import Path
-from typing import Optional
 from html.parser import HTMLParser
 
 from config import LOGGER
@@ -65,7 +64,6 @@ class EpubReader:
     def load(self) -> bool:
         """加载 EPUB 文件"""
         try:
-            import ebooklib
             from ebooklib import epub
 
             if not Path(self.file_path).exists():
@@ -117,28 +115,34 @@ class EpubReader:
         try:
             from ebooklib import epub
 
-            toc_items = self.book.toc if hasattr(self.book, 'toc') else []
+            toc_items = self.book.toc if hasattr(self.book, "toc") else []
             for item in toc_items:
                 if isinstance(item, epub.Link):
-                    self.toc.append({
-                        "title": item.title,
-                        "href": item.href,
-                        "level": 0,
-                    })
+                    self.toc.append(
+                        {
+                            "title": item.title,
+                            "href": item.href,
+                            "level": 0,
+                        }
+                    )
                 elif isinstance(item, tuple):
                     section, items = item
-                    self.toc.append({
-                        "title": section.title,
-                        "href": section.href,
-                        "level": 0,
-                    })
+                    self.toc.append(
+                        {
+                            "title": section.title,
+                            "href": section.href,
+                            "level": 0,
+                        }
+                    )
                     for sub_item in items:
                         if isinstance(sub_item, epub.Link):
-                            self.toc.append({
-                                "title": sub_item.title,
-                                "href": sub_item.href,
-                                "level": 1,
-                            })
+                            self.toc.append(
+                                {
+                                    "title": sub_item.title,
+                                    "href": sub_item.href,
+                                    "level": 1,
+                                }
+                            )
         except Exception as e:
             LOGGER.warning(f"目录提取失败: {e}")
 
@@ -156,8 +160,6 @@ class EpubReader:
             return self._content_cache[href]
 
         try:
-            from ebooklib import epub
-
             # 去除fragment identifier（如 #sigil_toc_id_1）
             clean_href = href.split("#")[0] if "#" in href else href
 

@@ -134,8 +134,16 @@ class DBManager:
 
     # 书籍相关方法
 
-    def add_book(self, title, author="", book_type="manual", file_path=None,
-                 description=None, cover_path=None, toc_json=None):
+    def add_book(
+        self,
+        title,
+        author="",
+        book_type="manual",
+        file_path=None,
+        description=None,
+        cover_path=None,
+        toc_json=None,
+    ):
         """添加新书籍到书架
 
         Args:
@@ -159,9 +167,10 @@ class DBManager:
             author = InputValidator.validate_author_name(author)
 
             self.cursor.execute(
-                """INSERT INTO books (title, author, book_type, file_path, description, cover_path, toc_json)
+                """INSERT INTO books
+                   (title, author, book_type, file_path, description, cover_path, toc_json)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (title, author, book_type, file_path, description, cover_path, toc_json)
+                (title, author, book_type, file_path, description, cover_path, toc_json),
             )
             self.conn.commit()
             book_id = self.cursor.lastrowid
@@ -189,7 +198,7 @@ class DBManager:
                 """SELECT id, title, author, added_date, file_path, description,
                           cover_path, toc_json, book_type
                    FROM books WHERE id = ?""",
-                (book_id,)
+                (book_id,),
             )
             row = self.cursor.fetchone()
             if row:
